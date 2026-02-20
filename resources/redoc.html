@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>API DOC</title>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <link href='https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700' rel='stylesheet'>
+  <style>
+      body {
+          margin: 0;
+          padding: 0;
+      }
+  </style>
+</head>
+<body>
+  <div id='redoc'></div>
+  <script src='https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js'></script>
+  <script>
+
+    ;(async function() {
+      const url = '{DOC_PATH}'
+      const response = await fetch(url)
+      if (response.status === 401) {
+        return
+      }
+      const spec = await response.json()
+      Redoc.init(
+        spec,
+        {
+          expandResponses: '200,201',
+          downloadFileName: 'api',
+          sortOperationsAlphabetically: true,
+          sortPropsAlphabetically: true,
+          theme: 1
+        },
+        document.getElementById('redoc')
+      )
+    })()
+  </script>
+</body>
+</html>

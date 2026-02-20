@@ -1,0 +1,25 @@
+| Environment variable                                | Type                                                                  | Default                    | Description                                  |
+|-----------------------------------------------------|-----------------------------------------------------------------------|----------------------------|----------------------------------------------|
+| PROJECT_NAME                                        | str                                                                   | —                          | Calculated automatically from pyproject.toml |
+| PROJECT_VERSION                                     | str                                                                   | —                          | Calculated automatically from pyproject.toml |
+| PROJECT_SERVICE                                     | 'admin_http', 'scheduler', 'user_http', 'user_ws', 'webhook_http'     | —                          | The type of project service being launched   |
+| ENTRYPOINT_CLIENT_API_SERVER_HOST                   | str                                                                   | —                          | —                                            |
+| ENTRYPOINT_CLIENT_API_SERVER_PORT                   | int                                                                   | —                          | —                                            |
+| ENTRYPOINT_CLIENT_API_SERVER_WORKERS                | int                                                                   | —                          | —                                            |
+| ENTRYPOINT_CLIENT_API_SERVER_URL                    | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_USERNAME     | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_PASSWORD     | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_DB           | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_HOST         | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_PORT         | int                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_POOL_SIZE    | int                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_POSTGRESQL_MAX_OVERFLOW | int                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_REDIS_HOST              | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_REDIS_PORT              | int                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_REDIS_PASSWORD          | str                                                                   | —                          | —                                            |
+| INFRA_PERSISTENCE_DATABASES_REDIS_DB                | int                                                                   | 0                          | —                                            |
+| LOGGER_LEVEL                                        | 'DEBUG', 'ERROR', 'INFO', 'WARNING'                                   | —                          | —                                            |
+| LOGGER_FORMAT                                       | 'json', 'plain'                                                       | —                          | —                                            |
+| SECURITY_DOCS_BASIC_AUTH_USERS                      | dict                                                                  | —                          | —                                            |
+| MODE                                                | 'demo', 'development', 'local', 'preproduction', 'production', 'test' | —                          | —                                            |
+| ROOT_DIR                                            | str                                                                   | <calculated automatically> | Calculated automatically                     |

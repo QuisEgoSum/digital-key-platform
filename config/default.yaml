@@ -1,0 +1,40 @@
+mode: production
+
+project:
+  service: user_http
+
+entrypoint:
+  user_http:
+    server:
+      port: 3000
+      host: 0.0.0.0
+      url: http://localhost:3000
+      workers: 1
+      trust_proxy_headers: true
+
+infra:
+  persistence:
+    databases:
+      postgresql:
+        host: 127.0.0.1
+        port: 5432
+        db: postgres
+        username: postgres
+        password: postgres
+        pool_size: 40
+        max_overflow: 10
+      redis:
+        host: 127.0.0.1
+        port: 6379
+        password: password
+        db: 0
+
+security:
+  docs:
+    basic_auth:
+      users:
+        username: password
+
+logger:
+  level: INFO
+  format: plain
