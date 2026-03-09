@@ -10,7 +10,7 @@ from infra.sanic.utils.responses import json_response
 router = Blueprint("UserRouter")
 
 
-@router.post("/users")
+@router.post("/auth/register")
 @openapi.tag("User")
 @openapi.response(UserDTO)
 @validator.body(UserRegisterInputDTO)

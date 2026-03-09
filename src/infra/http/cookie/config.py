@@ -27,7 +27,7 @@ class CookieDomainConfig(BaseModel, frozen=True):
         description=(
             "Host-to-domain mapping rules. "
             "For example, 'app.example.com' -> '.example.com'. "
-            "Applied before the mode rules."
+            "Used in the 'allow_list' mode."
         ),
     )
 

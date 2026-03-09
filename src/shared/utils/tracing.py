@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from opentelemetry.trace import Span, SpanKind, get_current_span, get_tracer
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 
 @contextmanager
@@ -31,3 +32,10 @@ def get_trace_signature() -> str | None:
         trace_id, span_id = format(ctx.trace_id, "032x"), format(ctx.span_id, "016x")
         return f"{trace_id}-{span_id}"
     return None
+
+
+def get_traceparent() -> str | None:
+    carrier: dict[str, str] = {}
+    TraceContextTextMapPropagator().inject(carrier)
+    traceparent = carrier.get("traceparent")
+    return traceparent

@@ -1,7 +1,6 @@
-from collections.abc import Mapping, MutableMapping
+from collections.abc import MutableMapping
 from typing import Any
 
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from sanic import HTTPResponse, response as sanic_response
 from sanic.response import JSONResponse
 
@@ -10,6 +9,7 @@ from infra.http.cookie.config import CookieConfig, CookiePolicyConfig
 from infra.sanic.http.request import AppRequest
 from shared.serialization.json import strict_orjson_dumps
 from shared.utils.logger import get_logger
+from shared.utils.tracing import get_traceparent
 
 logger = get_logger(__name__)
 
@@ -31,12 +31,10 @@ def json_response(
     )
 
 
-def build_response_headers(request: AppRequest) -> Mapping[str, str]:
+def build_response_headers(request: AppRequest) -> MutableMapping[str, str]:
     headers: MutableMapping[str, str] = {}
 
-    carrier: dict[str, str] = {}
-    TraceContextTextMapPropagator().inject(carrier)
-    traceparent = carrier.get("traceparent")
+    traceparent = get_traceparent()
 
     if traceparent:
         # https://www.w3.org/TR/trace-context/
@@ -48,7 +46,7 @@ def build_response_headers(request: AppRequest) -> Mapping[str, str]:
     return headers
 
 
-def add_session_cookie(
+def add_cookie(
     response: HTTPResponse,
     *,
     cookie: CookieConfig,
@@ -64,7 +62,7 @@ def add_session_cookie(
     )
 
     logger.debug(
-        "Set response session cookie",
+        "Set cookie",
         cookie=cookie_set,
     )
 
@@ -79,7 +77,7 @@ def add_session_cookie(
     )
 
 
-def delete_session_cookie(
+def delete_cookie(
     response: HTTPResponse,
     *,
     cookie: CookieConfig,
@@ -93,7 +91,7 @@ def delete_session_cookie(
     )
 
     logger.debug(
-        "Delete response session cookie",
+        "Delete cookie",
         cookie=cookie_delete,
     )
 

@@ -107,8 +107,7 @@ def resolve_cookie_domain(
         if request_host not in domain_cfg.allow_list:
             raise CookieDomainResolutionError()
 
-        mapped = domain_cfg.host_map.get(request_host)
-        return mapped
+        return domain_cfg.host_map.get(request_host, request_host)
 
     return None
 

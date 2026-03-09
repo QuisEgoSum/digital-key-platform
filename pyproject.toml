@@ -28,7 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "uv~=0.10.2",
+    "uv>=0.10.2,<0.11",
     "pre-commit>=4,<5",
     "mypy~=1.19.1",
     "pytest>=9.0,<10",
@@ -85,9 +85,6 @@ convention = "pep257"
   "T20",
   "ARG",
 ]
-#"src/**/entrypoint/**" = [
-#  "ARG",
-#]
 "src/scripts/**" = ["T20"]
 
 [tool.ruff.lint.flake8-unused-arguments]

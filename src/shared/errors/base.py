@@ -13,7 +13,7 @@ class ApplicationErrorMeta(abc.ABCMeta):
         name: str,
         bases: tuple[type, ...],
         attrs: dict[str, Any],
-    ) -> "ApplicationErrorMeta":
+    ) -> type["ApplicationError"]:
         cls = cast(
             "type[ApplicationError]",
             super().__new__(mcls, name, bases, attrs),
@@ -32,7 +32,7 @@ class ApplicationErrorMeta(abc.ABCMeta):
                 )
             _EXCEPTION_REGISTRY[code] = cls
 
-        return cast("ApplicationErrorMeta", cls)
+        return cls
 
 
 class ApplicationError(Exception, metaclass=ApplicationErrorMeta):

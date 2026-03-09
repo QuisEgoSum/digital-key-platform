@@ -41,6 +41,7 @@ class NotRequestProvidedError(BadDataError):
     target: str
 
     def __init__(self, target: TargetNameType):
-        super().__init__()
         self.message = f"No request {target.value} provided"
         self.target = str(target.value)
+
+        super().__init__()
