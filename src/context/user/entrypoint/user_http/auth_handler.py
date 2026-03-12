@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sanic import Blueprint, HTTPResponse
+from sanic import Blueprint, HTTPResponse, empty
 
 from config import config
 from context.user.application import use_cases
@@ -20,12 +20,14 @@ from context.user.application.errors.user import (
     UserTemporaryBlockedError,
 )
 from context.user.application.errors.user_email import UserEmailAlreadyExistsError
+from context.user.public.user_security_api import AuthorizationSessionDTO
 from infra import openapi
 from infra.http.headers.accept_language import parse_accept_language
 from infra.sanic import validator
 from infra.sanic.http.request import AppRequest
+from infra.sanic.security.user_auth import inject_user_session
 from infra.sanic.utils.request import get_request_ip_address
-from infra.sanic.utils.responses import add_cookie, json_response
+from infra.sanic.utils.responses import add_cookie, delete_cookie, json_response
 from shared.regional.i18n.locale import resolve_supported_locale
 from shared.regional.timezone import resolve_timezone
 
@@ -137,6 +139,26 @@ async def user_login(
         cookie=config.context.user.get_cookie_config_by_kind(
             result.session.storage.kind,
         ),
+        server_policy=request.app.ctx.server_cfg.cookie_policy,
+        request_host=request.host,
+    )
+
+    return response
+
+
+@router.post("/auth/logout")
+@openapi.tag("User Auth")
+@openapi.no_content()
+@inject_user_session()
+async def logout(request: AppRequest, session: AuthorizationSessionDTO) -> HTTPResponse:
+    """User logout."""
+    await use_cases.auth.logout(session.session_id)
+
+    response = empty()
+
+    delete_cookie(
+        response,
+        cookie=config.context.user.authorization.cookie,
         server_policy=request.app.ctx.server_cfg.cookie_policy,
         request_host=request.host,
     )

@@ -2,27 +2,23 @@ import uuid
 
 from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, Concatenate, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar
 
 from config import config
-from context.user.application.dtos.entity.user_session import (
-    UserSessionPasswordResetStateDTO,
-    UserSessionStorageDTO,
-)
 from context.user.application.enums.user_session import UserSessionKind
 from context.user.public import user_security_api
 from infra import openapi
 from infra.sanic.http.request import AppRequest
 from shared.errors.authorization import UnauthorizedError
 
+if TYPE_CHECKING:
+    from context.user.public.user_security_api import AnySessionDTO
+
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
 AsyncRequestHandler = Callable[Concatenate[AppRequest, P], Awaitable[R]]
-
-AuthorizationSessionDTO = UserSessionStorageDTO[None]
-PasswordResetSessionDTO = UserSessionStorageDTO[UserSessionPasswordResetStateDTO]
-AnySessionDTO = UserSessionStorageDTO[Any]
 
 
 def require_user_session() -> Callable[

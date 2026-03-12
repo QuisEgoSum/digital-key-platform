@@ -1,0 +1,23 @@
+meta {
+  name: Logout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL_USER_HTTP}}/v1/auth/logout
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "user@example.com",
+    "password": "password"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -4,6 +4,7 @@ from sanic import Sanic
 from sanic.worker.loader import AppLoader
 
 from config import config
+from context.user.application.enums.user_session import UserSessionKind
 from context.user.entrypoint.user_http.router import router as user_router
 from infra import openapi
 from infra.openapi import setup
@@ -55,7 +56,23 @@ def setup_openapi() -> None:
         "securitySchemes": {
             "UserSession": {
                 "type": "apiKey",
-                "name": cfg,
+                "name": config.context.user.get_cookie_config_by_kind(
+                    UserSessionKind.AUTHORIZATION,
+                ).name,
+                "in": "cookie",
+            },
+            "UserResetPasswordSession": {
+                "type": "apiKey",
+                "name": config.context.user.get_cookie_config_by_kind(
+                    UserSessionKind.PASSWORD_RESET,
+                ).name,
+                "in": "cookie",
+            },
+            "UserEmailVerificationSession": {
+                "type": "apiKey",
+                "name": config.context.user.get_cookie_config_by_kind(
+                    UserSessionKind.EMAIL_VERIFICATION,
+                ).name,
                 "in": "cookie",
             },
         },

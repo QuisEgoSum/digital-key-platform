@@ -1,3 +1,11 @@
+__all__ = (
+    "AnySessionDTO",
+    "AuthorizationSessionDTO",
+    "PasswordResetSessionDTO",
+    "UserSessionKind",
+    "verify_session",
+)
+
 import uuid
 
 from typing import Any, Literal, overload
@@ -8,6 +16,10 @@ from context.user.application.dtos.entity.user_session import (
 )
 from context.user.application.enums.user_session import UserSessionKind
 from context.user.application.services import user_session_service
+
+AuthorizationSessionDTO = UserSessionStorageDTO[None]
+PasswordResetSessionDTO = UserSessionStorageDTO[UserSessionPasswordResetStateDTO]
+AnySessionDTO = UserSessionStorageDTO[Any]
 
 
 @overload
