@@ -1,16 +1,16 @@
 from datetime import datetime
 
 from sqlalchemy import Index, String
-from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.user.public.enums.user import UserStatus
+from context.user.application.enums.user import UserStatus
 from infra.persistence.postgresql.columns import (
     created_at_column,
     timestamp_column,
     updated_at_column,
 )
 from infra.persistence.postgresql.models import BaseIntegerPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class UserRow(BaseIntegerPK):
@@ -23,7 +23,7 @@ class UserRow(BaseIntegerPK):
     )
 
     status: Mapped[UserStatus] = mapped_column(
-        ENUM(UserStatus, name="user_status_type", schema="user"),
+        sa_enum(UserStatus, name="user_status_type", schema="user"),
         nullable=False,
     )
     status_until_at: Mapped[datetime | None] = timestamp_column(
@@ -31,7 +31,7 @@ class UserRow(BaseIntegerPK):
         comment="User blocked until date.",
     )
 
-    locale: Mapped[str] = mapped_column(String(64), nullable=False)
+    locale: Mapped[str] = mapped_column(String(16), nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
 
     created_at: Mapped[datetime] = created_at_column()

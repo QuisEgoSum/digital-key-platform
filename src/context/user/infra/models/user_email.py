@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, and_
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infra.persistence.postgresql.columns import (
@@ -42,7 +42,10 @@ class UserEmailRow(BaseIntegerPK):
     inx_uue_user_id_is_primary_unq = Index(
         "inx_uue_user_id_is_primary_unq",
         user_id,
-        postgresql_where=is_primary.is_(True),
+        postgresql_where=and_(
+            is_primary.is_(True),
+            revoked_at.is_(None),
+        ),
         unique=True,
     )
     inx_uue_user_id = Index(

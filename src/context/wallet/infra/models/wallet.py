@@ -2,13 +2,13 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import DECIMAL, Index, Integer, String
-from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.money.public.enums.currency import CurrencyCode
-from context.wallet.public.enums.wallet import OwnerType, WalletRole
+from context.money.application.enums.currency import CurrencyCode
+from context.wallet.application.enums.wallet import OwnerType, WalletRole
 from infra.persistence.postgresql.columns import created_at_column, updated_at_column
 from infra.persistence.postgresql.models import BaseUUIDPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class WalletRow(BaseUUIDPK):
@@ -21,11 +21,11 @@ class WalletRow(BaseUUIDPK):
         comment="Entity id in owner wallet.",
     )
     owner_type: Mapped[OwnerType] = mapped_column(
-        ENUM(OwnerType, name="owner_type", schema="wallet"),
+        sa_enum(OwnerType, name="owner_type", schema="wallet"),
         nullable=False,
     )
     wallet_role: Mapped[WalletRole] = mapped_column(
-        ENUM(WalletRole, name="wallet_role_type", schema="wallet"),
+        sa_enum(WalletRole, name="wallet_role_type", schema="wallet"),
         nullable=False,
     )
     currency: Mapped[CurrencyCode | str] = mapped_column(

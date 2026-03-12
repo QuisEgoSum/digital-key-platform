@@ -111,8 +111,8 @@ class CookieConfig(BaseModel, frozen=True):
         ...,
         description="Cookie name.",
     )
-    max_age: int = Field(
-        ...,
+    max_age: int | None = Field(
+        None,
         description="Max-Age in seconds.",
     )
     policy_override: CookiePolicyOverrideConfig | None = Field(

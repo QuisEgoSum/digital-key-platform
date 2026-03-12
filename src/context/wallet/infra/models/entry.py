@@ -4,12 +4,13 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import DECIMAL, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import ENUM, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.wallet.public.enums.wallet import EntryDirection
+from context.wallet.application.enums.wallet import EntryDirection
 from infra.persistence.postgresql.columns import created_at_column
 from infra.persistence.postgresql.models import BaseUUIDPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class EntryRow(BaseUUIDPK):
@@ -29,7 +30,7 @@ class EntryRow(BaseUUIDPK):
     )
 
     direction: Mapped[EntryDirection] = mapped_column(
-        ENUM(EntryDirection, name="entry_direction_type", schema="wallet"),
+        sa_enum(EntryDirection, name="entry_direction_type", schema="wallet"),
         nullable=False,
     )
 

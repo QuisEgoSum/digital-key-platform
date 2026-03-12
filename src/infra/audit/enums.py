@@ -4,19 +4,36 @@ from enum import StrEnum
 class AuditActorType(StrEnum):
     ADMIN = "admin"
     USER = "user"
+    ANONYMOUS = "anonymous"
     SYSTEM = "system"
-    EXTERNAL_API = "external_api"
+    EXTERNAL_SERVICE = "external_service"
 
 
 class AuditSubjectType(StrEnum):
     USER = "user"
-    DEPOSIT = "deposit"
-    WITHDRAWAL = "withdrawal"
+
+
+class AuditEntityType(StrEnum):
+    USER_EMAIL = "user_email"
+    USER_ACTION_TOKEN = "user_action_token"
+    USER_SESSION = "user_session"
 
 
 class AuditActionType(StrEnum):
-    USER_SUCCESS_LOGIN = "user_success_login"
-    USER_FAILED_LOGIN = "user_failed_login"
+    LOGIN = "login"
+    LOGOUT = "logout"
+    REGISTER = "register"
+    EMAIL_VERIFICATION_REQUEST = "email_verification_request"
+    EMAIL_VERIFICATION_CONFIRM = "email_verification_confirm"
+    PASSWORD_RESET_REQUEST = "password_reset_request"
+    PASSWORD_RESET_CONFIRM = "password_reset_confirm"
+    PASSWORD_CHANGE = "password_change"
+
+
+class AuditResultType(StrEnum):
+    SUCCESS = "success"
+    FAILURE = "failure"
+    REJECTED = "rejected"
 
 
 class AuditEventEntityRoleType(StrEnum):
@@ -27,3 +44,4 @@ class AuditEventEntityRoleType(StrEnum):
     SOURCE = "source"
     TARGET = "target"
     RELATED = "related"
+    RESULT = "result"

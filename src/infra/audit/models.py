@@ -2,16 +2,18 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, Index, String, false
-from sqlalchemy.dialects.postgresql import ENUM, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infra.audit.enums import (
     AuditActionType,
     AuditActorType,
+    AuditResultType,
     AuditSubjectType,
 )
 from infra.persistence.postgresql.columns import created_at_column
 from infra.persistence.postgresql.models import BaseBigIntegerPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class AuditEventRow(BaseBigIntegerPK):
@@ -22,7 +24,7 @@ class AuditEventRow(BaseBigIntegerPK):
     # Event source
     # ------------------------------------------------------------------------------------------------------------------
     actor_type: Mapped[AuditActorType] = mapped_column(
-        ENUM(AuditActorType, name="audit_actor_type", schema="infra"),
+        sa_enum(AuditActorType, name="audit_actor_type", schema="infra"),
         nullable=False,
     )
     actor_key: Mapped[str | None] = mapped_column(String(), nullable=True)
@@ -32,7 +34,7 @@ class AuditEventRow(BaseBigIntegerPK):
     # ------------------------------------------------------------------------------------------------------------------
 
     subject_type: Mapped[AuditSubjectType] = mapped_column(
-        ENUM(AuditSubjectType, name="audit_subject_type", schema="infra"),
+        sa_enum(AuditSubjectType, name="audit_subject_type", schema="infra"),
         nullable=False,
     )
     subject_id: Mapped[str] = mapped_column(String(), nullable=True)
@@ -43,8 +45,11 @@ class AuditEventRow(BaseBigIntegerPK):
     # ------------------------------------------------------------------------------------------------------------------
 
     action: Mapped[AuditActionType] = mapped_column(
-        ENUM(AuditActionType, name="audit_action_type", schema="infra"),
+        sa_enum(AuditActionType, name="audit_action_type", schema="infra"),
         nullable=False,
+    )
+    result: Mapped[AuditResultType | None] = mapped_column(
+        sa_enum(AuditResultType, name="audit_result_type", schema="infra"),
     )
     is_critical: Mapped[bool] = mapped_column(
         Boolean(),
@@ -81,6 +86,7 @@ class AuditEventRow(BaseBigIntegerPK):
     )
     inx_iae_action_created_at_desc = Index(
         "inx_iae_action_created_at_desc",
+        action,
         created_at.desc(),
     )
     inx_iae_correlation_id = Index(

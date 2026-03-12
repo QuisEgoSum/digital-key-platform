@@ -9,6 +9,7 @@ manager = ConfigManager(
     root_config_path=root_dir,
     default_config_values={
         "project": project_metadata["project"],
+        "root_dir": root_dir,
     },
 )
 

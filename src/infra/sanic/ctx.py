@@ -8,6 +8,7 @@ from opentelemetry.context import Context
 from opentelemetry.trace import Span
 
 from config.models.components.server import ServerConfig
+from context.user.application.dtos.entity.user_session import UserSessionStorageDTO
 
 
 @dataclass()
@@ -15,7 +16,7 @@ class AppSanicRequestCTX(SimpleNamespace):
     otel_token: Token[Context] | None = None
     start_timestamp: float | None = None
     request_id: str | None = None
-    session: Any = None
+    session: UserSessionStorageDTO[Any] | None = None
     tracing_cm: AbstractContextManager[Span] | None = None
 
 

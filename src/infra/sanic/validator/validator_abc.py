@@ -88,11 +88,10 @@ class ValidatorABC[TP, TR](ABC):
 
     @abstractmethod
     def get_query_list_fields(self) -> set[str]:
-        """
-        Return a set of schema field names that expect multiple values
-        for the QUERY validator (i.e., list-typed query parameters).
-        """
+        """Return schema fields that accept multiple QUERY values.
 
+        Used for list-typed query parameters.
+        """
         ...
 
     @abstractmethod
@@ -100,8 +99,5 @@ class ValidatorABC[TP, TR](ABC):
 
     @abstractmethod
     def get_schema_fields(self) -> list[str]:
-        """
-        Return a list of schema field names used by the PARAMS validator.
-        """
-
+        """Return a list of schema field names used by the PARAMS validator."""
         ...

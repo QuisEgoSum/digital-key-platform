@@ -1,4 +1,3 @@
-__all__ = ("config", "manager", "root_dir")
+__all__ = ("config", "manager")
 
 from config.runtime.loader import config, manager
-from config.runtime.metadata import root_dir

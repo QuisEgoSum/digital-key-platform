@@ -39,6 +39,7 @@ dev = [
     "types-redis",
     "tabulate",
     "types-tabulate",
+    "sqlparse",
 ]
 
 [tool.ruff]
@@ -53,6 +54,7 @@ select = [
     "E",
     "F",
     "I",
+    "D",
     "B",
     "UP",
     "C4",
@@ -72,13 +74,14 @@ ignore = [
     "D103",
     "D104",
     "D107",
-    "D202",
     "D105",
-    "RUF002",
 ]
 
 [tool.ruff.lint.pydocstyle]
-convention = "pep257"
+convention = "google"
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
@@ -86,6 +89,7 @@ convention = "pep257"
   "ARG",
 ]
 "src/scripts/**" = ["T20"]
+"migrations/*" = ["D415"]
 
 [tool.ruff.lint.flake8-unused-arguments]
 ignore-variadic-names = true

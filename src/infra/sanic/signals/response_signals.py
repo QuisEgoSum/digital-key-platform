@@ -27,7 +27,7 @@ def register_response_signals(app: Sanic[Any, Any]) -> None:
         request: AppRequest,
         response: HTTPResponse,
     ) -> None:
-        additional_log_parameters: dict[str, str | int | float | None] = {
+        additional_log_parameters: dict[str, Any] = {
             "request_id": request.ctx.request_id,
         }
 

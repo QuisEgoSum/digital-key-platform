@@ -85,7 +85,7 @@ def validate[TP](
     target: TargetNameType = TargetNameType.UNION,
     payload: RawPayload,
     pass_data: bool = True,
-) -> Any:
+) -> TP:
     return validator_factory(
         schema=schema,
         target=target,

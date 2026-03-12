@@ -1,12 +1,13 @@
 from datetime import date
 
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, false
-from sqlalchemy.dialects.postgresql import ENUM, INET
+from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.user.public.enums.user import UserSessionKind
+from context.user.application.enums.user_session import UserSessionKind
 from infra.persistence.postgresql.columns import created_at_column
 from infra.persistence.postgresql.models import BaseUUIDPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class UserSessionRow(BaseUUIDPK):
@@ -14,11 +15,11 @@ class UserSessionRow(BaseUUIDPK):
     __table_args__ = ({"schema": "user"},)
 
     kind: Mapped[UserSessionKind] = mapped_column(
-        ENUM(UserSessionKind, name="user_session_type"),
+        sa_enum(UserSessionKind, name="user_session_kind_type"),
     )
     user_id: Mapped[int] = mapped_column(
         Integer(),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("user.users.id", ondelete="CASCADE"),
         nullable=False,
     )
     created_ip: Mapped[str] = mapped_column(
@@ -29,7 +30,7 @@ class UserSessionRow(BaseUUIDPK):
         Boolean(),
         nullable=False,
         server_default=false(),
-        comment='The flag changes its state when the "AUTHORIZATION" type session is explicitly deleted. '
+        comment="The flag changes its state when the 'AUTHORIZATION' type session is explicitly deleted. "
         "The expiration of the session lifetime is not reflected in the table, "
         "redis ttl is responsible for this.",
     )
@@ -41,8 +42,8 @@ class UserSessionRow(BaseUUIDPK):
         kind,
         postgresql_where=is_deleted.is_(False),
     )
-    inx_uus_user_id_created_at = Index(
-        "inx_uus_user_id_created_at",
+    inx_uus_user_id_created_at_desc = Index(
+        "inx_uus_user_id_created_at_desc",
         user_id,
-        created_at,
+        created_at.desc(),
     )

@@ -80,4 +80,4 @@ def register_exception_handler(app: AppSanic) -> None:
     @app.exception(Exception)
     def exception_handler(_: AppRequest, exception: Exception) -> HTTPResponse:
         logger.fatal("Internal error", exc_info=exception)
-        return response.json(internal_server_error_dict, status=501)
+        return response.json(internal_server_error_dict, status=500)

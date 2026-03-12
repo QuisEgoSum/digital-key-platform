@@ -17,6 +17,49 @@ class ErrorOutputDTO(BaseModel):
     error: str
 
 
+def exception_to_openapi(exc_cls: type["ApplicationError"]) -> dict[str, Any]:
+    payload_cache: dict[type[Any], type[BaseModel]] = {}
+
+    fields: dict[str, Any] = {
+        "code": (
+            Literal[exc_cls.code],
+            Field(..., examples=[exc_cls.code]),
+        ),
+        "error": (
+            Literal[exc_cls.__name__],
+            Field(..., examples=[exc_cls.__name__]),
+        ),
+        "message": (
+            str,
+            Field(..., examples=[getattr(exc_cls, "message", "")]),
+        ),
+    }
+
+    extra_ann = _iter_public_annotations(exc_cls)
+    for name, ann in extra_ann.items():
+        normalized_ann = _normalize_annotation(ann, payload_cache)
+
+        default = getattr(exc_cls, name, ...)
+        if default is ...:
+            fields[name] = (normalized_ann, Field(...))
+        else:
+            fields[name] = (normalized_ann, Field(default=default))
+
+    ErrorSchema = create_model(
+        exc_cls.__name__,
+        __base__=ErrorOutputDTO,
+        __config__=ConfigDict(arbitrary_types_allowed=True),
+        **fields,
+    )
+
+    return copy.deepcopy(
+        jsonref.loads(
+            json.dumps(TypeAdapter(ErrorSchema).json_schema()),
+            jsonschema=True,
+        ),
+    )
+
+
 def _build_payload_model_for_exception(
     exc_cls: type[Any],
     cache: dict[type[Any], type[BaseModel]],
@@ -65,32 +108,6 @@ def _normalize_annotation(ann: Any, cache: dict[type[Any], type[BaseModel]]) -> 
         return ann
 
 
-def exception_to_openapi(exc_cls: type["ApplicationError"]) -> dict[str, Any]:
-    payload_cache: dict[type[Any], type[BaseModel]] = {}
-
-    fields: dict[str, Any] = {
-        "code": (Literal[exc_cls.code], Field(default=exc_cls.code)),
-        "error": (Literal[exc_cls.__name__], Field(default=exc_cls.__name__)),
-        "message": (str, Field(default=getattr(exc_cls, "message", ""))),
-    }
-
-    extra_ann = getattr(exc_cls, "__annotations__", {}) or {}
-    for name, ann in extra_ann.items():
-        normalized_ann = _normalize_annotation(ann, payload_cache)
-
-        default = getattr(exc_cls, name, ...)
-        if default is ...:
-            fields[name] = (normalized_ann, Field(default=...))
-        else:
-            fields[name] = (normalized_ann, Field(default=default))
-
-    model_name = f"{exc_cls.__name__}"
-    Variant = create_model(
-        model_name,
-        __base__=ErrorOutputDTO,
-        __config__=ConfigDict(arbitrary_types_allowed=True),
-        **fields,
-    )
-    return copy.deepcopy(
-        jsonref.loads(json.dumps(TypeAdapter(Variant).json_schema()), jsonschema=True),
-    )
+def _iter_public_annotations(exc_cls: type[Any]) -> dict[str, Any]:
+    ann_map: dict[str, Any] = getattr(exc_cls, "__annotations__", {}) or {}
+    return {name: ann for name, ann in ann_map.items() if not name.startswith("_")}

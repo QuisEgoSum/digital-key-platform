@@ -13,12 +13,10 @@ BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def _log_task_result(task: asyncio.Task[Any]) -> None:
-    """
-    Log unhandled exceptions from background tasks.
+    """Log unhandled exceptions from background tasks.
 
     Note: Cancelled tasks are ignored (cancellation is usually a normal shutdown path).
     """
-
     try:
         exc = task.exception()
     except asyncio.CancelledError:

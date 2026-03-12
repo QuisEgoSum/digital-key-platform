@@ -16,13 +16,11 @@ class ServerConfig(BaseModel, frozen=True):
 
     @cached_property
     def base_path(self) -> str:
-        """
-        Return the path component of the server URL.
+        """Return the path component of the server URL.
 
         This usually represents the base path added by a reverse proxy
         (for example "/api" in "https://example.com/api").
         """
-
         return urlparse(self.url).path
 
 

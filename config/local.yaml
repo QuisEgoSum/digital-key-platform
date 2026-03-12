@@ -1,0 +1,14 @@
+mode: local
+
+logger:
+  level: INFO
+  format: plain
+
+
+entrypoint:
+  user_http:
+    server:
+      cookie_policy:
+        defaults:
+          secure: false
+          httponly: false

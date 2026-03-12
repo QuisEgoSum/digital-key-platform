@@ -318,7 +318,7 @@ def response(
 
 
 def responses(
-    schemas: list[SchemaType],
+    *schemas: SchemaType,
     status: int = 200,
     content_type: str = "application/json",
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:

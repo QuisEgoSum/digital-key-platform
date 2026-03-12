@@ -39,14 +39,7 @@ class ApplicationError(Exception, metaclass=ApplicationErrorMeta):
     message: str
     code: int
 
-    def __init__(
-        self,
-        *,
-        message: str | None = None,
-        code: int | None = None,
-    ) -> None:
-        self.message = message if message is not None else self.message
-        self.code = code if code is not None else self.code
+    def __init__(self) -> None:
         super().__init__(self.message)
 
     def __str__(self) -> str:
@@ -81,6 +74,8 @@ class ApplicationError(Exception, metaclass=ApplicationErrorMeta):
         args = {**data}
 
         args.pop("error", None)
+        args.pop("message", None)
+        args.pop("code", None)
 
         return exc_cls(**args)
 
@@ -90,7 +85,13 @@ class ApplicationError(Exception, metaclass=ApplicationErrorMeta):
         for base in reversed(cls.mro()):
             anns = getattr(base, "__annotations__", None)
             if anns:
-                merged.update(anns)
+                merged.update(
+                    {
+                        name: ann
+                        for name, ann in anns.items()
+                        if not name.startswith("_")
+                    },
+                )
 
         merged.pop("message", None)
         merged.pop("code", None)

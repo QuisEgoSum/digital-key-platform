@@ -2,7 +2,7 @@ import os
 
 from typing import Any
 
-from config import root_dir
+from config import config
 from config.models.components.project import ProjectConfig
 from infra import openapi
 from shared.utils.logger import get_logger
@@ -34,7 +34,7 @@ def setup_openapi(
 
         for tag_name in tags_dict:
             path = os.path.join(
-                root_dir,
+                config.root_dir,
                 "docs/openapi",
                 project_service_type,
                 tag_name + ".md",

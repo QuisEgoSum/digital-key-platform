@@ -4,12 +4,13 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Index, String
-from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.wallet.public.enums.wallet import OperationSource, OperationType
+from context.wallet.application.enums.wallet import OperationSource, OperationType
 from infra.persistence.postgresql.columns import created_at_column
 from infra.persistence.postgresql.models import BaseUUIDPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class OperationRow(BaseUUIDPK):
@@ -17,11 +18,11 @@ class OperationRow(BaseUUIDPK):
     __table_args__ = ({"schema": "wallet"},)
 
     operation_type: Mapped[OperationType] = mapped_column(
-        ENUM(OperationType, name="operation_type", schema="wallet"),
+        sa_enum(OperationType, name="operation_type", schema="wallet"),
         nullable=False,
     )
     source_type: Mapped[OperationSource] = mapped_column(
-        ENUM(OperationSource, name="operation_source_type", schema="wallet"),
+        sa_enum(OperationSource, name="operation_source_type", schema="wallet"),
         nullable=False,
     )
     source_id: Mapped[uuid.UUID] = mapped_column(

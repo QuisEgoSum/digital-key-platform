@@ -21,7 +21,7 @@ class UserCredentialsRow(Base):
         primary_key=True,
     )
 
-    password_hash: Mapped[str] = mapped_column(
+    password_hash: Mapped[str | None] = mapped_column(
         String(60),
         nullable=True,
     )

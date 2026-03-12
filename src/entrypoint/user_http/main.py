@@ -61,7 +61,7 @@ def setup_openapi() -> None:
         },
     }
     openapi_spec["x-tagGroups"] = [
-        {"name": "User", "tags": ["User"]},
+        {"name": "User", "tags": ["User Auth", "User Me"]},
     ]
     openapi_spec["servers"].append({"url": cfg.url})
 

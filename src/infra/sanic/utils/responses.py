@@ -74,6 +74,7 @@ def add_cookie(
         domain=cookie_set.domain,
         samesite=cookie_set.samesite,
         secure=cookie_set.secure,
+        httponly=cookie_set.httponly,
     )
 
 

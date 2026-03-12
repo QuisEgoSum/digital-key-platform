@@ -1,10 +1,9 @@
 from datetime import datetime
 
 from sqlalchemy import ForeignKey, Index, Integer, String
-from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.user.public.enums.user import (
+from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
     UserActionTokenKind,
     UserActionTokenStatusType,
@@ -15,6 +14,7 @@ from infra.persistence.postgresql.columns import (
     updated_at_column,
 )
 from infra.persistence.postgresql.models import BaseBigIntegerPK
+from infra.persistence.postgresql.types import sa_enum
 
 
 class UserActionTokenRow(BaseBigIntegerPK):
@@ -28,11 +28,11 @@ class UserActionTokenRow(BaseBigIntegerPK):
     )
 
     kind: Mapped[UserActionTokenKind] = mapped_column(
-        ENUM(UserActionTokenKind, name="user_auth_token_kind_type", schema="user"),
+        sa_enum(UserActionTokenKind, name="user_auth_token_kind_type", schema="user"),
         nullable=False,
     )
     status: Mapped[UserActionTokenStatusType] = mapped_column(
-        ENUM(
+        sa_enum(
             UserActionTokenStatusType,
             name="user_action_token_status_type",
             schema="user",
@@ -42,7 +42,7 @@ class UserActionTokenRow(BaseBigIntegerPK):
     )
 
     channel: Mapped[UserActionTokenChannelType] = mapped_column(
-        ENUM(
+        sa_enum(
             UserActionTokenChannelType,
             name="user_action_token_channel_type",
             schema="user",
@@ -64,7 +64,7 @@ class UserActionTokenRow(BaseBigIntegerPK):
         created_at.desc(),
     )
     inx_uuat_user_id_kind_status_active_unq = Index(
-        "inx_uuat_user_id_status_active_unq",
+        "inx_uuat_user_id_kind_status_active_unq",
         user_id,
         kind,
         postgresql_where=status == UserActionTokenStatusType.ACTIVE.value,

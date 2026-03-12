@@ -1,9 +1,9 @@
 from sqlalchemy import SmallInteger, String
-from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.money.public.enums.currency import CurrencyCode, CurrencyKind
+from context.money.application.enums.currency import CurrencyCode, CurrencyKind
 from infra.persistence.postgresql.models import Base
+from infra.persistence.postgresql.types import sa_enum
 
 
 class CurrencyRow(Base):
@@ -15,7 +15,7 @@ class CurrencyRow(Base):
         nullable=False,
     )
     kind: Mapped[CurrencyKind] = mapped_column(
-        ENUM(CurrencyKind, name="currency_kind_type", schema="money"),
+        sa_enum(CurrencyKind, name="currency_kind_type", schema="money"),
         nullable=False,
     )
     precision: Mapped[int] = mapped_column(

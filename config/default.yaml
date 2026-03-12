@@ -30,11 +30,24 @@ infra:
         db: 0
 
 security:
+  tokens:
+    secret_key: q6KF5jVPGv-RRHgZ8k4BaxJB6fYBCZ24JEsZYEB5MvmBScmln354rTes5WmuiAXA-KmA8SgREf5VdBsAHVsSnA
   docs:
     basic_auth:
       users:
         username: password
 
+regional:
+  i18n:
+    default_locale: en
+    supported_locales:
+      - en
+      - en-US
+      - ru
+      - de
+  timezone:
+    default_timezone: UTC
+
 logger:
   level: INFO
-  format: plain
+  format: json
