@@ -1,0 +1,22 @@
+meta {
+  name: Confirm email by link
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL_USER_HTTP}}/v1/auth/email/verify-link
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "token": "gamsIM9pjq33DTHwgMhPu6StJEL8JAzfl4R4D6jGX5Gwe7jOLdZGnJIwOA_Lgqr023n-_AlOaoMve745kZYa8Q"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

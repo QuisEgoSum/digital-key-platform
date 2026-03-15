@@ -4,19 +4,14 @@ from sqlalchemy import Boolean, ForeignKey, Index, Integer, false
 from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.orm import Mapped, mapped_column
 
-from context.user.application.enums.user_session import UserSessionKind
 from infra.persistence.postgresql.columns import created_at_column
 from infra.persistence.postgresql.models import BaseUUIDPK
-from infra.persistence.postgresql.types import sa_enum
 
 
 class UserSessionRow(BaseUUIDPK):
     __tablename__ = "user_sessions"
     __table_args__ = ({"schema": "user"},)
 
-    kind: Mapped[UserSessionKind] = mapped_column(
-        sa_enum(UserSessionKind, name="user_session_kind_type"),
-    )
     user_id: Mapped[int] = mapped_column(
         Integer(),
         ForeignKey("user.users.id", ondelete="CASCADE"),
@@ -36,10 +31,9 @@ class UserSessionRow(BaseUUIDPK):
     )
     created_at: Mapped[date] = created_at_column()
 
-    inx_uus_user_id_kind_is_deleted_false = Index(
-        "inx_uus_user_id_kind_is_deleted_false",
+    inx_uus_user_id_is_deleted_false = Index(
+        "inx_uus_user_id_is_deleted_false",
         user_id,
-        kind,
         postgresql_where=is_deleted.is_(False),
     )
     inx_uus_user_id_created_at_desc = Index(

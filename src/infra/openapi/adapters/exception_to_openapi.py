@@ -20,18 +20,23 @@ class ErrorOutputDTO(BaseModel):
 def exception_to_openapi(exc_cls: type["ApplicationError"]) -> dict[str, Any]:
     payload_cache: dict[type[Any], type[BaseModel]] = {}
 
+    default_message: str | None = None
+
+    if getattr(exc_cls, "message", None) is not None:
+        default_message = exc_cls.message
+
     fields: dict[str, Any] = {
         "code": (
             Literal[exc_cls.code],
-            Field(..., examples=[exc_cls.code]),
+            Field(...),
         ),
         "error": (
             Literal[exc_cls.__name__],
-            Field(..., examples=[exc_cls.__name__]),
+            Field(...),
         ),
         "message": (
-            str,
-            Field(..., examples=[getattr(exc_cls, "message", "")]),
+            str if default_message is None else Literal[default_message],
+            Field(...),
         ),
     }
 

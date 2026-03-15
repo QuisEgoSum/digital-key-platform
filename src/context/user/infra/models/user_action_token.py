@@ -63,6 +63,11 @@ class UserActionTokenRow(BaseBigIntegerPK):
         user_id,
         created_at.desc(),
     )
+    inx_uuat_long_token_hash_active = Index(
+        "inx_uuat_long_token_hash_active",
+        long_token_hash,
+        postgresql_where=status == UserActionTokenStatusType.ACTIVE.value,
+    )
     inx_uuat_user_id_kind_status_active_unq = Index(
         "inx_uuat_user_id_kind_status_active_unq",
         user_id,

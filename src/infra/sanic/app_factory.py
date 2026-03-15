@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, cast
 
-from sanic import Config, Request, Sanic
+from sanic import Config as SanicConfig, Request, Sanic
 
 from config.models.components.server import ServerConfig
+from config.models.root import Config
 from infra.sanic import listeners
 from infra.sanic.ctx import AppSanicCTX
 from infra.sanic.hooks.exception_handler import register_exception_handler
@@ -11,25 +12,25 @@ from infra.sanic.openapi.handler import router as openapi_router
 from infra.sanic.signals.request_signals import register_request_signals
 from infra.sanic.signals.response_signals import register_response_signals
 from infra.sanic.types import AppSanic
-from shared.enums.project import ProjectServiceType
 
 if TYPE_CHECKING:
     from types import SimpleNamespace
 
 
 def app_factory(
-    service: ProjectServiceType,
     server_cfg: ServerConfig,
+    cfg: Config,
 ) -> AppSanic:
     app = Sanic(
-        service.name,
+        cfg.project.service.name,
         configure_logging=False,
         request_class=cast(
-            "type[Request[Sanic[Config, SimpleNamespace], SimpleNamespace]]",
+            "type[Request[Sanic[SanicConfig, SimpleNamespace], SimpleNamespace]]",
             AppRequest,
         ),
         ctx=AppSanicCTX(
             server_cfg=server_cfg,
+            cfg=cfg,
         ),
     )
 

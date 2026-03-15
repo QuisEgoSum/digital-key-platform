@@ -37,11 +37,12 @@ class SchemaValidationError(ValidationError):
 
 
 class NotRequestProvidedError(BadDataError):
+    message = "No request {target} provided"
     code = 3
-    target: str
+    target: TargetNameType
 
     def __init__(self, target: TargetNameType):
-        self.message = f"No request {target.value} provided"
-        self.target = str(target.value)
+        self.message = f"No request {target!s} provided"
+        self.target = target
 
         super().__init__()

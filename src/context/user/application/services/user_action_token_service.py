@@ -9,9 +9,14 @@ from context.user.application.dtos.payload.user_action_token import (
 from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
     UserActionTokenKind,
+    UserActionTokenStatusType,
+)
+from context.user.application.errors.user_action_token import (
+    InvalidUserActionTokenError,
 )
 from context.user.config.user_action_token import UserActionTokenConfig
 from context.user.infra.dao import user_action_token_dao
+from shared.context.debug_collector import add_debug_artifact
 from shared.security.hash import compute_scoped_hmac
 from shared.security.tokens import generate_numeric_token, generate_urlsafe_token
 from shared.utils.datetime_utils import current_datetime
@@ -29,17 +34,21 @@ async def create_action_token(
     cfg = config.context.user.get_token_config_by_kind(kind)
     token = generate_action_token(cfg, kind)
 
+    add_debug_artifact(f"user-action-token-{kind!s}-short", token.short_token)
+    add_debug_artifact(f"user-action-token-{kind!s}-long", token.long_token)
+
     cancelled_ids = await user_action_token_dao.cancel_active_user_kind_tokens(
         user_id,
         kind,
     )
 
-    logger.info(
-        "Cancelled user action tokens",
-        user_id=user_id,
-        kind=kind,
-        token_ids=cancelled_ids,
-    )
+    if cancelled_ids:
+        logger.info(
+            "Cancelled user action tokens",
+            user_id=user_id,
+            kind=kind,
+            token_ids=cancelled_ids,
+        )
 
     token_dto = await user_action_token_dao.insert_user_action_token(
         UserActionTokenInsertPayload(
@@ -76,4 +85,61 @@ def generate_action_token(
             secret=config.security.tokens.secret_key,
             scope=kind.value,
         ),
+    )
+
+
+async def verify_short_token(
+    user_id: int,
+    kind: UserActionTokenKind,
+    token: str,
+) -> UserActionTokenDTO:
+    action_token = await user_action_token_dao.get_active_user_token_by_user_id(
+        user_id=user_id,
+        kind=kind,
+    )
+
+    if action_token is None:
+        raise InvalidUserActionTokenError("token_not_found")
+
+    if action_token.expires_at < current_datetime():
+        raise InvalidUserActionTokenError("token_expired", action_token)
+
+    short_token_hash = compute_scoped_hmac(
+        value=token,
+        secret=config.security.tokens.secret_key,
+        scope=kind.value,
+    )
+
+    if action_token.short_token_hash != short_token_hash:
+        raise InvalidUserActionTokenError("token_mismatch", action_token)
+
+    return await user_action_token_dao.update_token_status(
+        action_token.id,
+        status=UserActionTokenStatusType.USED,
+    )
+
+
+async def verify_link_token(
+    kind: UserActionTokenKind,
+    token: str,
+) -> UserActionTokenDTO:
+    long_token_hash = compute_scoped_hmac(
+        value=token,
+        secret=config.security.tokens.secret_key,
+        scope=kind.value,
+    )
+
+    action_token = await user_action_token_dao.get_active_user_token_by_long_hash(
+        long_token_hash=long_token_hash,
+    )
+
+    if action_token is None:
+        raise InvalidUserActionTokenError("token_not_found")
+
+    if action_token.expires_at < current_datetime():
+        raise InvalidUserActionTokenError("token_expired", action_token)
+
+    return await user_action_token_dao.update_token_status(
+        action_token.id,
+        status=UserActionTokenStatusType.USED,
     )

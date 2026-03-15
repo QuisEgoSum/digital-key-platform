@@ -12,3 +12,6 @@ entrypoint:
         defaults:
           secure: false
           httponly: false
+
+debug:
+  expose_artifacts: true

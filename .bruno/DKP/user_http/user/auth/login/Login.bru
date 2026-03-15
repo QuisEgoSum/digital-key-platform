@@ -1,18 +1,18 @@
 meta {
-  name: Logout
+  name: Login
   type: http
-  seq: 3
+  seq: 1
 }
 
 post {
-  url: {{BASE_URL_USER_HTTP}}/v1/auth/logout
-  body: none
+  url: {{BASE_URL_USER_HTTP}}/v1/auth/login
+  body: json
   auth: inherit
 }
 
 body:json {
   {
-    "email": "user@example.com",
+    "email": "user22@example.com",
     "password": "password"
   }
 }

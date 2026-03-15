@@ -48,13 +48,6 @@ user_action_token_channel_type = postgresql.ENUM(
     schema="user",
     create_type=False,
 )
-user_session_kind_type = postgresql.ENUM(
-    "authorization",
-    "email_verification",
-    "password_reset",
-    name="user_session_kind_type",
-    create_type=False,
-)
 
 
 def upgrade() -> None:
@@ -64,7 +57,6 @@ def upgrade() -> None:
     user_auth_token_kind_type.create(op.get_bind())
     user_action_token_status_type.create(op.get_bind())
     user_action_token_channel_type.create(op.get_bind())
-    user_session_kind_type.create(op.get_bind())
 
     op.create_table(
         "users",
@@ -154,6 +146,14 @@ def upgrade() -> None:
         "user_action_tokens",
         ["user_id", "kind"],
         unique=True,
+        schema="user",
+        postgresql_where=sa.text("status = 'active'"),
+    )
+    op.create_index(
+        "inx_uuat_long_token_hash_active",
+        "user_action_tokens",
+        ["long_token_hash"],
+        unique=False,
         schema="user",
         postgresql_where=sa.text("status = 'active'"),
     )
@@ -258,7 +258,6 @@ def upgrade() -> None:
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
-        sa.Column("kind", user_session_kind_type, nullable=False),
         sa.Column(
             "is_deleted",
             sa.Boolean(),
@@ -282,9 +281,9 @@ def upgrade() -> None:
         schema="user",
     )
     op.create_index(
-        "inx_uus_user_id_kind_is_deleted_false",
+        "inx_uus_user_id_is_deleted_false",
         "user_sessions",
-        ["user_id", "kind"],
+        ["user_id"],
         unique=False,
         schema="user",
         postgresql_where=sa.text("is_deleted IS false"),
@@ -293,7 +292,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index(
-        "inx_uus_user_id_kind_is_deleted_false",
+        "inx_uus_user_id_is_deleted_false",
         table_name="user_sessions",
         schema="user",
         postgresql_where=sa.text("is_deleted IS false"),
@@ -320,6 +319,12 @@ def downgrade() -> None:
     op.drop_table("user_emails", schema="user")
     op.drop_table("user_credentials", schema="user")
     op.drop_index(
+        "inx_uuat_long_token_hash_active",
+        table_name="user_action_tokens",
+        schema="user",
+        postgresql_where=sa.text("status = 'active'"),
+    )
+    op.drop_index(
         "inx_uuat_user_id_kind_status_active_unq",
         table_name="user_action_tokens",
         schema="user",
@@ -343,6 +348,5 @@ def downgrade() -> None:
     user_auth_token_kind_type.drop(op.get_bind())
     user_action_token_status_type.drop(op.get_bind())
     user_action_token_channel_type.drop(op.get_bind())
-    user_session_kind_type.drop(op.get_bind())
 
     op.execute('drop schema if exists "user" cascade;')

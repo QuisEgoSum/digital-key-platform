@@ -15,9 +15,14 @@ async def record_events(events: Sequence[AuditEventCommand]) -> None:
     for event in events:
         mapped_event: dict[str, Any] = {
             "actor_type": event.actor_type,
-            "actor_key": str(event.actor_key),
+            "actor_key": str(event.actor_key) if event.actor_type is not None else None,
             "subject_type": event.subject_type,
-            "subject_id": str(event.subject_id),
+            "subject_id": (
+                str(event.subject_id) if event.subject_id is not None else None
+            ),
+            "scope_type": event.scope_type,
+            "scope_id": str(event.scope_id) if event.scope_id is not None else None,
+            "ip_address": event.ip_address,
             "action": event.action,
             "result": event.result,
             "is_critical": event.is_critical,
@@ -25,8 +30,12 @@ async def record_events(events: Sequence[AuditEventCommand]) -> None:
         }
         if event.subject_extra:
             mapped_event["subject_extra"] = to_serializable(event.subject_extra)
+        else:
+            mapped_event["subject_extra"] = None
         if event.data:
             mapped_event["data"] = to_serializable(event.data)
+        else:
+            mapped_event["data"] = None
 
         mapped_events.append(mapped_event)
 

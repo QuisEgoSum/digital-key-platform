@@ -6,9 +6,13 @@ from config import config
 from context.user.application import use_cases
 from context.user.application.dtos.command.auth import (
     UserLoginCommand,
+    UserLogoutCommand,
     UserRegisterCommand,
 )
-from context.user.application.dtos.input.auth import UserLoginInput, UserRegisterInput
+from context.user.application.dtos.input.auth import (
+    UserLoginInput,
+    UserRegisterInput,
+)
 from context.user.application.dtos.output.auth import (
     UserLoginEmailVerificationOutput,
     UserLoginLoggedInOutput,
@@ -19,13 +23,14 @@ from context.user.application.errors.user import (
     UserBannedError,
     UserTemporaryBlockedError,
 )
-from context.user.application.errors.user_email import UserEmailAlreadyExistsError
-from context.user.public.user_security_api import AuthorizationSessionDTO
 from infra import openapi
 from infra.http.headers.accept_language import parse_accept_language
 from infra.sanic import validator
 from infra.sanic.http.request import AppRequest
-from infra.sanic.security.user_auth import inject_user_session
+from infra.sanic.security.user_auth import (
+    UserAuthSessionDTO,
+    inject_user_session,
+)
 from infra.sanic.utils.request import get_request_ip_address
 from infra.sanic.utils.responses import add_cookie, delete_cookie, json_response
 from shared.regional.i18n.locale import resolve_supported_locale
@@ -34,13 +39,12 @@ from shared.regional.timezone import resolve_timezone
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
-router = Blueprint("UserAuthRouter")
+router = Blueprint("UserAuthLoginRouter")
 
 
 @router.post("/auth/register")
 @openapi.tag("User Auth")
 @openapi.response(UserRegisterOutput, status=201)
-@openapi.errors(UserEmailAlreadyExistsError)
 @validator.body(UserRegisterInput)
 async def user_register(
     request: AppRequest,
@@ -72,7 +76,7 @@ async def user_register(
     result = await use_cases.auth.register_user(command)
 
     # For access log.
-    request.ctx.session = result.session.storage
+    request.ctx.flow_session = result.flow_session.storage
 
     response: HTTPResponse = json_response(
         UserRegisterOutput(status=result.status),
@@ -81,9 +85,9 @@ async def user_register(
 
     add_cookie(
         response,
-        value=result.session.session_key,
-        cookie=config.context.user.get_cookie_config_by_kind(
-            result.session.storage.kind,
+        value=result.flow_session.session_key,
+        cookie=config.context.user.get_flow_cookie_config_by_kind(
+            result.flow_session.storage.kind,
         ),
         server_policy=request.app.ctx.server_cfg.cookie_policy,
         request_host=request.host,
@@ -117,8 +121,6 @@ async def user_login(
 
     result = await use_cases.auth.login(command)
 
-    request.ctx.session = result.session.storage
-
     if result.status == "logged_in":
         response_payload: BaseModel = UserLoginLoggedInOutput(
             status="logged_in",
@@ -133,15 +135,26 @@ async def user_login(
 
     response: HTTPResponse = json_response(response_payload)
 
-    add_cookie(
-        response,
-        value=result.session.session_key,
-        cookie=config.context.user.get_cookie_config_by_kind(
-            result.session.storage.kind,
-        ),
-        server_policy=request.app.ctx.server_cfg.cookie_policy,
-        request_host=request.host,
-    )
+    if result.session is not None:
+        request.ctx.session = result.session.storage
+        add_cookie(
+            response,
+            value=result.session.session_key,
+            cookie=config.context.user.authorization.cookie,
+            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            request_host=request.host,
+        )
+    elif result.flow_session is not None:
+        request.ctx.flow_session = result.flow_session.storage
+        add_cookie(
+            response,
+            value=result.flow_session.session_key,
+            cookie=config.context.user.get_flow_cookie_config_by_kind(
+                result.flow_session.storage.kind,
+            ),
+            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            request_host=request.host,
+        )
 
     return response
 
@@ -150,9 +163,14 @@ async def user_login(
 @openapi.tag("User Auth")
 @openapi.no_content()
 @inject_user_session()
-async def logout(request: AppRequest, session: AuthorizationSessionDTO) -> HTTPResponse:
+async def logout(request: AppRequest, session: UserAuthSessionDTO) -> HTTPResponse:
     """User logout."""
-    await use_cases.auth.logout(session.session_id)
+    command = UserLogoutCommand(
+        session=session,
+        ip_address=get_request_ip_address(request),
+    )
+
+    await use_cases.auth.logout(command)
 
     response = empty()
 

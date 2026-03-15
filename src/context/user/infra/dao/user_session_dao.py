@@ -6,7 +6,6 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from context.user.application.dtos.entity.user_session import UserSessionDTO
-from context.user.application.enums.user_session import UserSessionKind
 from context.user.infra.models import UserSessionRow
 from infra.persistence.postgresql.connection import db
 from infra.persistence.sqlalchemy.mapping import (
@@ -17,14 +16,12 @@ from infra.persistence.sqlalchemy.mapping import (
 
 async def insert_session(
     user_id: int,
-    kind: UserSessionKind,
     created_ip: str,
 ) -> UserSessionDTO:
     stmt = (
         insert(UserSessionRow)
         .values(
             user_id=user_id,
-            kind=kind,
             created_ip=created_ip,
         )
         .returning(UserSessionRow.__table__)
@@ -50,12 +47,10 @@ async def soft_delete_session_by_id(session_id: uuid.UUID) -> None:
 async def soft_delete_user_sessions(
     *,
     user_id: int,
-    kind: UserSessionKind,
     exclude_id: uuid.UUID | None = None,
 ) -> Sequence[UserSessionDTO]:
     where = [
         UserSessionRow.user_id == user_id,
-        UserSessionRow.kind == kind,
         UserSessionRow.is_deleted.is_(False),
     ]
 
@@ -75,18 +70,16 @@ async def soft_delete_user_sessions(
 
 async def soft_delete_user_sessions_exceeding_limit(
     user_id: int,
-    kind: UserSessionKind,
     limit: int,
 ) -> Sequence[UserSessionDTO]:
     sq = (
         select(UserSessionRow.id)
         .where(
             UserSessionRow.user_id == user_id,
-            UserSessionRow.kind == kind,
             UserSessionRow.is_deleted.is_(False),
         )
         .order_by(UserSessionRow.created_at.desc())
-        .offset(limit - 1)
+        .offset(limit)
     )
 
     stmt = (

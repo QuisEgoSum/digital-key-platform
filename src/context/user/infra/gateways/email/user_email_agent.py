@@ -8,15 +8,29 @@ from shared.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-async def send_user_registration_email(
-    email: UserEmailDTO,
-    token: UserActionTokenDTO,
+async def send_email_verification_email(
+    user_email: UserEmailDTO,
+    action_token: UserActionTokenDTO,
     token_generated: UserActionTokenGeneratedDTO,
 ) -> None:
     # Stub
     logger.info(
-        "Sending user registration email",
-        email=email,
-        token=token,
+        "Sending email verification email",
+        email=user_email,
+        token=action_token,
+        token_generated=token_generated,
+    )
+
+
+async def send_user_password_reset_email(
+    user_email: UserEmailDTO,
+    action_token: UserActionTokenDTO,
+    token_generated: UserActionTokenGeneratedDTO,
+) -> None:
+    # Stub
+    logger.info(
+        "Sending user password reset",
+        email=user_email,
+        token=action_token,
         token_generated=token_generated,
     )

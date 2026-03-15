@@ -1,0 +1,22 @@
+meta {
+  name: Confirm email by code
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{BASE_URL_USER_HTTP}}/v1/auth/email/verify
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "token": "602857"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

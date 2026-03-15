@@ -3,8 +3,9 @@ from typing import Final
 from pydantic import BaseModel, Field
 
 from context.user.application.enums.user_action_token import UserActionTokenKind
-from context.user.application.enums.user_session import UserSessionKind
+from context.user.application.enums.user_flow_session import UserFlowSessionKind
 from context.user.config.user_action_token import UserActionTokenConfig
+from context.user.config.user_flow_session import UserFlowSessionConfig
 from context.user.config.user_session import UserSessionConfig
 from infra.http.cookie.config import CookieConfig
 
@@ -22,8 +23,8 @@ class UserAuthorizationConfig(BaseModel, frozen=True):
 
 
 class UserEmailVerificationConfig(BaseModel, frozen=True):
-    session: UserSessionConfig = Field(
-        default_factory=lambda: UserSessionConfig(auto_renewal=False),
+    session: UserFlowSessionConfig = Field(
+        default_factory=UserFlowSessionConfig,
     )
     cookie: CookieConfig = Field(
         default_factory=lambda: CookieConfig(
@@ -34,14 +35,15 @@ class UserEmailVerificationConfig(BaseModel, frozen=True):
     token: UserActionTokenConfig = Field(
         default_factory=UserActionTokenConfig,
     )
+    auto_login_on_success: bool = Field(
+        False,
+        description="Automatically authorize the user after successful completion of the flow..",
+    )
 
 
 class UserResetPasswordConfig(BaseModel, frozen=True):
-    session: UserSessionConfig = Field(
-        default_factory=lambda: UserSessionConfig(
-            active_session_limit=1,
-            auto_renewal=False,
-        ),
+    session: UserFlowSessionConfig = Field(
+        default_factory=UserFlowSessionConfig,
     )
     cookie: CookieConfig = Field(
         default_factory=lambda: CookieConfig(
@@ -51,6 +53,10 @@ class UserResetPasswordConfig(BaseModel, frozen=True):
     )
     token: UserActionTokenConfig = Field(
         default_factory=UserActionTokenConfig,
+    )
+    auto_login_on_success: bool = Field(
+        True,
+        description="Automatically authorize the user after successful completion of the flow..",
     )
 
 
@@ -74,30 +80,26 @@ class UserConfig(BaseModel, frozen=True):
                 return self.email_verification.token
             case UserActionTokenKind.PASSWORD_RESET:
                 return self.password_reset.token
+            case _:
+                raise ValueError(f"Unsupported token kind: {kind!r}")
 
-        raise ValueError(f"Unsupported token kind: {kind!r}")
-
-    def get_session_config_by_kind(
+    def get_flow_session_config_by_kind(
         self,
-        kind: UserSessionKind,
-    ) -> UserSessionConfig:
+        kind: UserFlowSessionKind,
+    ) -> UserFlowSessionConfig:
         match kind:
-            case UserSessionKind.AUTHORIZATION:
-                return self.authorization.session
-            case UserSessionKind.EMAIL_VERIFICATION:
+            case UserFlowSessionKind.EMAIL_VERIFICATION:
                 return self.email_verification.session
-            case UserSessionKind.PASSWORD_RESET:
+            case UserActionTokenKind.PASSWORD_RESET:
                 return self.password_reset.session
+            case _:
+                raise ValueError(f"Unsupported flow session kind: {kind!r}")
 
-        raise ValueError(f"Unsupported session kind: {kind!r}")
-
-    def get_cookie_config_by_kind(self, kind: UserSessionKind) -> CookieConfig:
+    def get_flow_cookie_config_by_kind(self, kind: UserFlowSessionKind) -> CookieConfig:
         match kind:
-            case UserSessionKind.AUTHORIZATION:
-                return self.authorization.cookie
-            case UserSessionKind.EMAIL_VERIFICATION:
+            case UserFlowSessionKind.EMAIL_VERIFICATION:
                 return self.email_verification.cookie
-            case UserSessionKind.PASSWORD_RESET:
+            case UserActionTokenKind.PASSWORD_RESET:
                 return self.password_reset.cookie
-
-        raise ValueError(f"Unsupported session kind: {kind!r}")
+            case _:
+                raise ValueError(f"Unsupported flow session kind: {kind!r}")

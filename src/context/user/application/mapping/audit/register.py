@@ -1,10 +1,9 @@
-from typing import Any
-
 from context.user.application.dtos.command.auth import UserRegisterCommand
 from context.user.application.dtos.entity.user import UserDTO
-from context.user.application.dtos.entity.user_action_token import UserActionTokenDTO
 from context.user.application.dtos.entity.user_email import UserEmailDTO
-from context.user.application.dtos.entity.user_session import UserSessionStorageDTO
+from context.user.application.dtos.entity.user_flow_session import (
+    UserFlowSessionEmailVerificationDTO,
+)
 from infra.audit.dtos import AuditEntityRefDTO, AuditEventCommand, AuditEventDetailsDTO
 from infra.audit.enums import (
     AuditActionType,
@@ -12,6 +11,7 @@ from infra.audit.enums import (
     AuditEntityType,
     AuditEventEntityRoleType,
     AuditResultType,
+    AuditScopeType,
     AuditSubjectType,
 )
 
@@ -19,16 +19,19 @@ from infra.audit.enums import (
 def map_register_event_success(
     command: UserRegisterCommand,
     user: UserDTO,
-    email: UserEmailDTO,
-    action_token: UserActionTokenDTO,
-    session: UserSessionStorageDTO[Any],
+    user_email: UserEmailDTO,
+    flow_session: UserFlowSessionEmailVerificationDTO,
 ) -> AuditEventCommand:
     return AuditEventCommand(
         actor_type=AuditActorType.ANONYMOUS,
         subject_type=AuditSubjectType.USER,
         subject_id=user.id,
+        subject_extra={"email": command.email},
+        scope_type=AuditScopeType.USER,
+        scope_id=user.id,
         result=AuditResultType.SUCCESS,
         action=AuditActionType.REGISTER,
+        ip_address=command.ip_address,
         data=AuditEventDetailsDTO(
             details={
                 "outcome": "email_verification_required",
@@ -36,42 +39,44 @@ def map_register_event_success(
             entities=[
                 AuditEntityRefDTO(
                     type=AuditEntityType.USER_EMAIL,
-                    id=email.id,
+                    id=user_email.id,
                     role=AuditEventEntityRoleType.RESULT,
                 ),
                 AuditEntityRefDTO(
-                    type=AuditEntityType.USER_ACTION_TOKEN,
-                    id=action_token.id,
-                    role=AuditEventEntityRoleType.RESULT,
-                ),
-                AuditEntityRefDTO(
-                    type=AuditEntityType.USER_SESSION,
-                    id=session.session_id,
-                    role=AuditEventEntityRoleType.RESULT,
+                    type=AuditEntityType.USER_FLOW_SESSION,
+                    id=flow_session.session_id,
+                    role=AuditEventEntityRoleType.FLOW,
+                    extra={"kind": flow_session.kind},
                 ),
             ],
-            context={
-                "ip_address": command.ip_address,
-            },
         ),
     )
 
 
 def map_register_event_failure(
     command: UserRegisterCommand,
+    flow_session: UserFlowSessionEmailVerificationDTO,
 ) -> AuditEventCommand:
     return AuditEventCommand(
         actor_type=AuditActorType.ANONYMOUS,
         subject_type=AuditSubjectType.USER,
         subject_extra={"email": command.email},
+        scope_type=None,
+        scope_id=None,
         result=AuditResultType.REJECTED,
         action=AuditActionType.REGISTER,
+        ip_address=command.ip_address,
         data=AuditEventDetailsDTO(
             details={
                 "outcome": "email_already_exists",
             },
-            context={
-                "ip_address": command.ip_address,
-            },
+            entities=[
+                AuditEntityRefDTO(
+                    type=AuditEntityType.USER_FLOW_SESSION,
+                    id=flow_session.session_id,
+                    role=AuditEventEntityRoleType.FLOW,
+                    extra={"kind": flow_session.kind},
+                ),
+            ],
         ),
     )

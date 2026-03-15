@@ -29,12 +29,16 @@ audit_actor_type = postgresql.ENUM(
 )
 audit_subject_type = postgresql.ENUM(
     "user",
+    "user_action_token",
+    "user_session",
+    "user_email",
     name="audit_subject_type",
     schema="infra",
     create_type=False,
 )
 audit_action_type = postgresql.ENUM(
     "login",
+    "logout",
     "register",
     "email_verification_request",
     "email_verification_confirm",
@@ -52,6 +56,13 @@ audit_result_type = postgresql.ENUM(
     schema="infra",
     create_type=False,
 )
+audit_scope_type = postgresql.ENUM(
+    "user",
+    "admin",
+    name="audit_scope_type",
+    schema="infra",
+    create_type=False,
+)
 
 
 def upgrade() -> None:
@@ -61,6 +72,7 @@ def upgrade() -> None:
     audit_subject_type.create(op.get_bind())
     audit_action_type.create(op.get_bind())
     audit_result_type.create(op.get_bind())
+    audit_scope_type.create(op.get_bind())
 
     op.create_table(
         "audit_events",
@@ -72,7 +84,8 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("actor_type", audit_actor_type, nullable=False),
-        sa.Column("subject_type", audit_subject_type, nullable=False),
+        sa.Column("subject_type", audit_subject_type, nullable=True),
+        sa.Column("scope_type", audit_scope_type, nullable=True),
         sa.Column("action", audit_action_type, nullable=False),
         sa.Column("result", audit_result_type, nullable=True),
         sa.Column(
@@ -81,8 +94,10 @@ def upgrade() -> None:
             server_default=sa.text("false"),
             nullable=False,
         ),
+        sa.Column("ip_address", postgresql.INET(), nullable=True),
         sa.Column("actor_key", sa.String(), nullable=True),
         sa.Column("subject_id", sa.String(), nullable=True),
+        sa.Column("scope_id", sa.String(), nullable=True),
         sa.Column("correlation_id", sa.String(), nullable=True),
         sa.Column(
             "subject_extra",
@@ -133,9 +148,21 @@ def upgrade() -> None:
         unique=False,
         schema="infra",
     )
+    op.create_index(
+        "inx_iae_scope_type_scope_id_created_at_desc",
+        "audit_events",
+        ["scope_type", "scope_id", sa.literal_column("created_at DESC")],
+        unique=False,
+        schema="infra",
+    )
 
 
 def downgrade() -> None:
+    op.drop_index(
+        "inx_iae_scope_type_scope_id_created_at_desc",
+        table_name="audit_events",
+        schema="infra",
+    )
     op.drop_index(
         "inx_iae_subject_type_subject_id_created_at_desc",
         table_name="audit_events",
@@ -159,5 +186,6 @@ def downgrade() -> None:
     audit_subject_type.drop(op.get_bind())
     audit_action_type.drop(op.get_bind())
     audit_result_type.drop(op.get_bind())
+    audit_scope_type.drop(op.get_bind())
 
     op.execute("drop schema if exists infra cascade;")

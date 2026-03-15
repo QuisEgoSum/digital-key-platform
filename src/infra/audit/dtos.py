@@ -9,6 +9,7 @@ from infra.audit.enums import (
     AuditEntityType,
     AuditEventEntityRoleType,
     AuditResultType,
+    AuditScopeType,
     AuditSubjectType,
 )
 
@@ -31,7 +32,7 @@ class AuditEntityRefDTO:
 
 @dataclass()
 class AuditEventDetailsDTO:
-    details: Any
+    details: Any = None
     entities: list[AuditEntityRefDTO] | None = None
     context: dict[str, Any] | None = None
 
@@ -39,8 +40,14 @@ class AuditEventDetailsDTO:
 @dataclass()
 class AuditEventCommand:
     actor_type: AuditActorType
-    subject_type: AuditSubjectType
     action: AuditActionType
+
+    scope_type: AuditScopeType | None
+    scope_id: int | str | uuid.UUID | None
+
+    ip_address: str | None
+
+    subject_type: AuditSubjectType | None = None
 
     result: AuditResultType | None = None
 

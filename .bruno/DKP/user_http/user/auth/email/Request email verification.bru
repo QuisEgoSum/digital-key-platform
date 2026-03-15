@@ -1,0 +1,16 @@
+meta {
+  name: Request email verification
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL_USER_HTTP}}/v1/auth/email/request-verification
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

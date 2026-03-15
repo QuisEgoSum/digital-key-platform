@@ -11,12 +11,22 @@ class AuditActorType(StrEnum):
 
 class AuditSubjectType(StrEnum):
     USER = "user"
+    USER_ACTION_TOKEN = "user_action_token"
+    USER_SESSION = "user_session"
+    USER_EMAIL = "user_email"
+
+
+class AuditScopeType(StrEnum):
+    USER = "user"
+    ADMIN = "admin"
 
 
 class AuditEntityType(StrEnum):
+    USER = "user"
     USER_EMAIL = "user_email"
     USER_ACTION_TOKEN = "user_action_token"
     USER_SESSION = "user_session"
+    USER_FLOW_SESSION = "user_flow_session"
 
 
 class AuditActionType(StrEnum):
@@ -45,3 +55,4 @@ class AuditEventEntityRoleType(StrEnum):
     TARGET = "target"
     RELATED = "related"
     RESULT = "result"
+    FLOW = "flow"

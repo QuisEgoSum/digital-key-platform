@@ -4,5 +4,5 @@ from pydantic import BaseModel
 
 
 class LoggerConfig(BaseModel, frozen=True):
-    level: Literal["INFO", "DEBUG", "ERROR", "WARNING"]
-    format: Literal["plain", "json"]
+    level: Literal["INFO", "DEBUG", "ERROR", "WARNING"] = "INFO"
+    format: Literal["plain", "json"] = "json"

@@ -1,5 +1,5 @@
 from collections.abc import MutableMapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sanic import HTTPResponse, response as sanic_response
 from sanic.response import JSONResponse
@@ -7,9 +7,13 @@ from sanic.response import JSONResponse
 from infra.http.cookie.builder import build_cookie_delete, build_cookie_set
 from infra.http.cookie.config import CookieConfig, CookiePolicyConfig
 from infra.sanic.http.request import AppRequest
+from shared.context.debug_collector import get_debug_artifacts
 from shared.serialization.json import strict_orjson_dumps
 from shared.utils.logger import get_logger
 from shared.utils.tracing import get_traceparent
+
+if TYPE_CHECKING:
+    from config.models.root import Config
 
 logger = get_logger(__name__)
 
@@ -32,6 +36,8 @@ def json_response(
 
 
 def build_response_headers(request: AppRequest) -> MutableMapping[str, str]:
+    cfg: Config = request.app.ctx.cfg
+
     headers: MutableMapping[str, str] = {}
 
     traceparent = get_traceparent()
@@ -42,6 +48,10 @@ def build_response_headers(request: AppRequest) -> MutableMapping[str, str]:
 
     if request.ctx.request_id:
         headers["X-Request-Id"] = request.ctx.request_id
+
+    if cfg.is_production is False and cfg.debug.expose_artifacts is True:
+        for key, value in get_debug_artifacts().items():
+            headers[f"X-Debug-{key}"] = value
 
     return headers
 

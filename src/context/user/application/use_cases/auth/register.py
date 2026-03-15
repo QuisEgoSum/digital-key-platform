@@ -5,8 +5,11 @@ from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
     UserActionTokenKind,
 )
-from context.user.application.enums.user_session import UserSessionKind
+from context.user.application.enums.user_flow_session import UserFlowSessionKind
 from context.user.application.errors.user_email import UserEmailAlreadyExistsError
+from context.user.application.mapping.audit.confirm_email import (
+    map_request_confirm_email_success,
+)
 from context.user.application.mapping.audit.register import (
     map_register_event_failure,
     map_register_event_success,
@@ -15,8 +18,8 @@ from context.user.application.services import (
     user_action_token_service,
     user_credentials_service,
     user_email_service,
+    user_flow_session_service,
     user_service,
-    user_session_service,
 )
 from context.user.infra.gateways.email import user_email_agent
 from infra.audit import audit_api
@@ -27,11 +30,7 @@ from shared.utils.asyncio_utils import run_in_background
 async def register_user(
     command: UserRegisterCommand,
 ) -> UserRegisterResult:
-    """Register user.
-
-    Raises:
-        UserEmailAlreadyExistsError
-    """
+    """Register user."""
     user_payload = UserCreatePayload(
         name=command.name,
         locale=command.locale,
@@ -58,35 +57,53 @@ async def register_user(
                     channel_id=user_email.id,
                 )
             )
-            session = await user_session_service.create_session(
-                user_id=user.id,
-                kind=UserSessionKind.EMAIL_VERIFICATION,
-                ip_address=command.ip_address,
-            )
     except UserEmailAlreadyExistsError:
-        await audit_api.record_event_in_new_tx(map_register_event_failure(command))
-        raise
+        # Do not reveal whether the email already exists.
+        # We intentionally mimic the successful registration flow by returning
+        # "email_verification_required" and creating a flow session (without user_id).
+        # This keeps the observable behavior identical and prevents account enumeration.
+        flow_session = await user_flow_session_service.create_flow_session(
+            user_id=None,
+            kind=UserFlowSessionKind.EMAIL_VERIFICATION,
+        )
+        await audit_api.record_events(
+            map_register_event_failure(command, flow_session.storage),
+        )
+        return UserRegisterResult(
+            flow_session=flow_session,
+            status="email_verification_required",
+        )
+
+    flow_session = await user_flow_session_service.create_flow_session(
+        user_id=user.id,
+        kind=UserFlowSessionKind.EMAIL_VERIFICATION,
+    )
 
     run_in_background(
-        user_email_agent.send_user_registration_email(
-            email=user_email,
-            token=action_token,
+        user_email_agent.send_email_verification_email(
+            user_email=user_email,
+            action_token=action_token,
             token_generated=action_token_generated,
         ),
     )
 
-    await audit_api.record_event_in_new_tx(
+    await audit_api.record_events(
         map_register_event_success(
             command=command,
             user=user,
-            email=user_email,
+            user_email=user_email,
+            flow_session=flow_session.storage,
+        ),
+        map_request_confirm_email_success(
+            user_id=user.id,
+            ip_address=command.ip_address,
+            user_email=user_email,
             action_token=action_token,
-            session=session.storage,
+            flow_session=flow_session.storage,
         ),
     )
 
     return UserRegisterResult(
-        user=user,
-        session=session,
+        flow_session=flow_session,
         status="email_verification_required",
     )

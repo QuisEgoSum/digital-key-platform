@@ -4,7 +4,7 @@ from sanic import Sanic
 from sanic.worker.loader import AppLoader
 
 from config import config
-from context.user.application.enums.user_session import UserSessionKind
+from context.user.application.enums.user_flow_session import UserFlowSessionKind
 from context.user.entrypoint.user_http.router import router as user_router
 from infra import openapi
 from infra.openapi import setup
@@ -19,8 +19,8 @@ def main() -> None:
 
 def create_app() -> Sanic[Any, Any]:
     app = app_factory(
-        service=config.project.service,
         server_cfg=config.entrypoint.user_http.server,
+        cfg=config,
     )
 
     app.register_listener(before_server_start, "before_server_start")
@@ -56,29 +56,35 @@ def setup_openapi() -> None:
         "securitySchemes": {
             "UserSession": {
                 "type": "apiKey",
-                "name": config.context.user.get_cookie_config_by_kind(
-                    UserSessionKind.AUTHORIZATION,
-                ).name,
+                "name": config.context.user.authorization.cookie.name,
                 "in": "cookie",
             },
             "UserResetPasswordSession": {
                 "type": "apiKey",
-                "name": config.context.user.get_cookie_config_by_kind(
-                    UserSessionKind.PASSWORD_RESET,
+                "name": config.context.user.get_flow_cookie_config_by_kind(
+                    UserFlowSessionKind.PASSWORD_RESET,
                 ).name,
                 "in": "cookie",
             },
             "UserEmailVerificationSession": {
                 "type": "apiKey",
-                "name": config.context.user.get_cookie_config_by_kind(
-                    UserSessionKind.EMAIL_VERIFICATION,
+                "name": config.context.user.get_flow_cookie_config_by_kind(
+                    UserFlowSessionKind.EMAIL_VERIFICATION,
                 ).name,
                 "in": "cookie",
             },
         },
     }
     openapi_spec["x-tagGroups"] = [
-        {"name": "User", "tags": ["User Auth", "User Me"]},
+        {
+            "name": "User",
+            "tags": [
+                "User Auth",
+                "User Auth Reset Password",
+                "User Auth Confirm Email",
+                "User Me",
+            ],
+        },
     ]
     openapi_spec["servers"].append({"url": cfg.url})
 
