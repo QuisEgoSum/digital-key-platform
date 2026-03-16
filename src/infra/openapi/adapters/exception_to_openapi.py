@@ -42,6 +42,9 @@ def exception_to_openapi(exc_cls: type["ApplicationError"]) -> dict[str, Any]:
 
     extra_ann = _iter_public_annotations(exc_cls)
     for name, ann in extra_ann.items():
+        if name in fields:
+            continue
+
         normalized_ann = _normalize_annotation(ann, payload_cache)
 
         default = getattr(exc_cls, name, ...)

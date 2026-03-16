@@ -9,7 +9,7 @@ from infra.sanic.validator.errors import (
 
 def pydantic_error_mapper(
     ex: ValidationError,
-    target_name: str | TargetNameType,
+    target_name: TargetNameType,
     *,
     additional_loc_prefix: list[str | int] | None = None,
 ) -> SchemaValidationError:

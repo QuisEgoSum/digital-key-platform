@@ -19,26 +19,27 @@ class SchemaValidationItemError(ValidationError):
 
 
 class SchemaValidationError(ValidationError):
-    target: str
-    code: int = 1
     message = "Validation errors"
+    code: int = 1
+
+    target: TargetNameType
     errors: list[SchemaValidationItemError]
 
     def __init__(
         self,
-        target: TargetNameType | str,
+        target: TargetNameType,
         errors: list[SchemaValidationItemError],
     ) -> None:
-        super().__init__()
         self.errors = errors
-        self.target = (
-            str(target.value) if isinstance(target, TargetNameType) else target
-        )
+        self.target = target
+
+        super().__init__()
 
 
 class NotRequestProvidedError(BadDataError):
     message = "No request {target} provided"
     code = 3
+
     target: TargetNameType
 
     def __init__(self, target: TargetNameType):

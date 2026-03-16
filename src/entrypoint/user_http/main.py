@@ -59,7 +59,7 @@ def setup_openapi() -> None:
                 "name": config.context.user.authorization.cookie.name,
                 "in": "cookie",
             },
-            "UserResetPasswordSession": {
+            "UserPasswordResetSession": {
                 "type": "apiKey",
                 "name": config.context.user.get_flow_cookie_config_by_kind(
                     UserFlowSessionKind.PASSWORD_RESET,
