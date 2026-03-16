@@ -2,6 +2,7 @@ __all__ = (
     "UserAuthSessionDTO",
     "UserEmailVerificationSessionDTO",
     "UserFlowSessionAnyDTO",
+    "UserFlowSessionPasswordResetDTO",
     "UserPasswordResetSessionDTO",
     "inject_email_verification_session",
     "inject_password_reset_session",

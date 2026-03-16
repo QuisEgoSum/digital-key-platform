@@ -45,3 +45,8 @@ class UserRequestPasswordResetResult:
     created_flow_session: (
         UserFlowSessionCreateResult[UserFlowSessionPasswordResetDTO] | None
     ) = None
+
+
+@dataclass(frozen=True)
+class UserPasswordResetResult:
+    auth_session: UserSessionCreateResult | None

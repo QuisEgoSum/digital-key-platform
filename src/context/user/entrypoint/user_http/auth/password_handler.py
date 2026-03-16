@@ -5,9 +5,13 @@ from context.user.application import use_cases
 from context.user.application.dtos.command.auth import (
     UserConfirmPasswordByCodeCommand,
     UserConfirmPasswordByLinkCommand,
+    UserPasswordResetCommand,
+    UserRequestPasswordResetCommand,
 )
 from context.user.application.dtos.input.auth import (
     UserActionTokenInput,
+    UserPasswordResetInput,
+    UserPasswordResetRequestInput,
 )
 from context.user.application.errors.user_action_token import (
     InvalidUserActionTokenError,
@@ -21,9 +25,43 @@ from infra.sanic.security.user_auth import (
     load_password_reset_session,
 )
 from infra.sanic.utils.request import get_request_ip_address
-from infra.sanic.utils.responses import add_cookie
+from infra.sanic.utils.responses import add_cookie, delete_cookie
 
 router = Blueprint("UserAuthPasswordRouter")
+
+
+@router.post("/auth/password/request-reset")
+@openapi.tag("User Auth Reset Password")
+@openapi.no_content()
+@validator.body(UserPasswordResetRequestInput)
+@load_password_reset_session()
+async def request_password_reset(
+    request: AppRequest,
+    body: UserPasswordResetRequestInput,
+) -> HTTPResponse:
+    """Request confirm password reset."""
+    command = UserRequestPasswordResetCommand(
+        flow_session=request.ctx.flow_session,
+        email=body.email,
+        ip_address=get_request_ip_address(request),
+    )
+
+    result = await use_cases.auth.reset_password.request_password_reset(command)
+
+    response = empty()
+
+    if result.created_flow_session is not None:
+        add_cookie(
+            response,
+            value=result.created_flow_session.session_key,
+            cookie=config.context.user.get_flow_cookie_config_by_kind(
+                result.created_flow_session.storage.kind,
+            ),
+            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            request_host=request.host,
+        )
+
+    return response
 
 
 @router.post("/auth/password/verify")
@@ -83,6 +121,55 @@ async def password_verify_link(
             cookie=config.context.user.get_flow_cookie_config_by_kind(
                 result.created_flow_session.storage.kind,
             ),
+            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            request_host=request.host,
+        )
+
+    return response
+
+
+@router.post("/auth/password/reset")
+@openapi.tag("User Auth Reset Password")
+@openapi.no_content()
+@openapi.errors()
+@validator.body(UserActionTokenInput)
+@inject_password_reset_session()
+async def password_reset(
+    request: AppRequest,
+    session: UserFlowSessionPasswordResetDTO,
+    body: UserPasswordResetInput,
+) -> HTTPResponse:
+    """Set new password.
+
+    Requires a password reset session.
+
+    On success the password reset session is invalidated.
+    Depending on application configuration, an authorization session may be created automatically.
+    """
+    command = UserPasswordResetCommand(
+        flow_session=session,
+        password=body.password,
+        ip_address=get_request_ip_address(request),
+    )
+
+    result = await use_cases.auth.reset_password.password_reset(command)
+
+    response = empty()
+
+    delete_cookie(
+        response,
+        cookie=config.context.user.get_flow_cookie_config_by_kind(session.kind),
+        server_policy=request.app.ctx.server_cfg.cookie_policy,
+        request_host=request.host,
+    )
+
+    if result.auth_session:
+        request.ctx.session = result.auth_session.storage
+
+        add_cookie(
+            response,
+            value=result.auth_session.session_key,
+            cookie=config.context.user.authorization.cookie,
             server_policy=request.app.ctx.server_cfg.cookie_policy,
             request_host=request.host,
         )

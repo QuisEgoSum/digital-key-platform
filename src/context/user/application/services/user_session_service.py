@@ -20,7 +20,7 @@ from shared.security.tokens import generate_urlsafe_token
 
 async def create_session(
     user_id: int,
-    ip_address: str,
+    ip_address: str | None,
 ) -> UserSessionCreateResult:
     cfg = config.context.user.authorization.session
 

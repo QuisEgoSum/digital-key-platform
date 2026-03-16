@@ -14,7 +14,7 @@ from context.user.application.services import (
 from context.user.infra.gateways.email import user_email_agent
 from infra.audit import audit_api
 from infra.persistence.postgresql.connection import db
-from shared.utils.asyncio_utils import run_in_background
+from shared.utils.background_tasks import schedule_in_background
 
 
 async def request_confirm_email(command: UserRequestConfirmEmailCommand) -> None:
@@ -45,7 +45,7 @@ async def request_confirm_email(command: UserRequestConfirmEmailCommand) -> None
             )
         )
 
-    run_in_background(
+    await schedule_in_background(
         user_email_agent.send_email_verification_email(
             user_email=user_email,
             action_token=action_token,

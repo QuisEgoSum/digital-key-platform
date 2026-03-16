@@ -5,6 +5,18 @@ from pydantic import BaseModel, EmailStr, Field, SecretStr, field_validator
 TZ_SET = available_timezones()
 
 
+class _EmailRequiredInput(BaseModel, frozen=True):
+    email: EmailStr = Field(
+        ...,
+        max_length=320,
+    )
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+
 class UserPreferencesInput(BaseModel, frozen=True):
     timezone: str | None = Field(
         None,
@@ -24,48 +36,42 @@ class UserPreferencesInput(BaseModel, frozen=True):
         return value
 
 
-class UserRegisterInput(UserPreferencesInput, frozen=True):
+class UserRegisterInput(UserPreferencesInput, _EmailRequiredInput, frozen=True):
     name: str = Field(
         ...,
         min_length=1,
         max_length=128,
     )
-    email: EmailStr = Field(
-        ...,
-        max_length=320,
-    )
     password: SecretStr = Field(
         ...,
         min_length=8,
         max_length=128,
     )
 
-    @field_validator("email", mode="before")
-    @classmethod
-    def normalize_email(cls, value: str) -> str:
-        return value.strip().lower()
 
-
-class UserLoginInput(BaseModel, frozen=True):
-    email: EmailStr = Field(
-        ...,
-        max_length=320,
-    )
+class UserLoginInput(_EmailRequiredInput, frozen=True):
     password: SecretStr = Field(
         ...,
         min_length=8,
         max_length=128,
     )
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def normalize_email(cls, value: str) -> str:
-        return value.strip().lower()
 
 
 class UserActionTokenInput(BaseModel, frozen=True):
     token: str = Field(
         ...,
         min_length=1,
+        max_length=128,
+    )
+
+
+class UserPasswordResetRequestInput(_EmailRequiredInput, frozen=True):
+    pass
+
+
+class UserPasswordResetInput(BaseModel, frozen=True):
+    password: SecretStr = Field(
+        ...,
+        min_length=8,
         max_length=128,
     )

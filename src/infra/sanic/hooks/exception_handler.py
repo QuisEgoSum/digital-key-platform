@@ -48,8 +48,7 @@ def register_exception_handler(app: AppSanic) -> None:
                 error=str(exception),
                 error_cls=str(type(exception)),
                 status_code=exception.status_code,
-                # Log stacktrace.
-                exc_info=exception,
+                exc_info=(type(exception), exception, exception.__traceback__),
             )
         return response.json({"message": str(exception)}, status=exception.status_code)
 
@@ -79,5 +78,8 @@ def register_exception_handler(app: AppSanic) -> None:
 
     @app.exception(Exception)
     def exception_handler(_: AppRequest, exception: Exception) -> HTTPResponse:
-        logger.fatal("Internal error", exc_info=exception)
+        logger.fatal(
+            "Internal error",
+            exc_info=(type(exception), exception, exception.__traceback__),
+        )
         return response.json(internal_server_error_dict, status=500)

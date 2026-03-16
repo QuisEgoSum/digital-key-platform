@@ -24,7 +24,7 @@ from context.user.infra.gateways.email import user_email_agent
 from infra.audit import audit_api
 from infra.persistence.postgresql.connection import db
 from shared.errors.base import ApplicationError
-from shared.utils.asyncio_utils import run_in_background
+from shared.utils.background_tasks import schedule_in_background
 
 if TYPE_CHECKING:
     from context.user.application.dtos.entity.user_email import UserEmailDTO
@@ -112,7 +112,7 @@ async def request_password_reset(
             )
         raise
 
-    run_in_background(
+    await schedule_in_background(
         user_email_agent.send_user_password_reset_email(
             user_email=user_email,
             action_token=action_token,

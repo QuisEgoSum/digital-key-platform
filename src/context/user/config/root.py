@@ -16,7 +16,7 @@ class UserAuthorizationConfig(BaseModel, frozen=True):
     session: UserSessionConfig = Field(default_factory=UserSessionConfig)
     cookie: CookieConfig = Field(
         default_factory=lambda: CookieConfig(
-            name="session_id",
+            name="session",
             max_age=DEFAULT_COOKIE_MAX_AGE,
         ),
     )
@@ -28,7 +28,7 @@ class UserEmailVerificationConfig(BaseModel, frozen=True):
     )
     cookie: CookieConfig = Field(
         default_factory=lambda: CookieConfig(
-            name="ev_session_id",
+            name="ev_session",
             max_age=DEFAULT_COOKIE_MAX_AGE,
         ),
     )
@@ -47,7 +47,7 @@ class UserResetPasswordConfig(BaseModel, frozen=True):
     )
     cookie: CookieConfig = Field(
         default_factory=lambda: CookieConfig(
-            name="rp_session_id",
+            name="rp_session",
             max_age=DEFAULT_COOKIE_MAX_AGE,
         ),
     )

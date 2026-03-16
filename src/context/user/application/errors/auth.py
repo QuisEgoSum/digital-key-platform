@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from shared.errors.base import AuthenticationError
+from shared.errors.base import AuthenticationError, AuthorizationError
 
 type InvalidCredentialsClassifier = Literal[
     "user_not_found",
@@ -25,3 +25,8 @@ class InvalidCredentialsError(AuthenticationError):
     @property
     def classifier(self) -> InvalidCredentialsClassifier:
         return self._classifier
+
+
+class PasswordResetSessionNotConfirmedError(AuthorizationError):
+    message = "Password reset session is not confirmed."
+    code = 2021

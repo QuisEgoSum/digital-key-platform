@@ -1,4 +1,4 @@
-.PHONY: uv-sync venv lint format
+.PHONY: uv-sync venv lint format tests
 
 lint:
 	black --check .
@@ -12,3 +12,6 @@ format:
 
 uv-sync:
 	uv sync --all-extras
+
+tests:
+	pytest tests

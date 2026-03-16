@@ -11,6 +11,7 @@ class AuditActorType(StrEnum):
 
 class AuditSubjectType(StrEnum):
     USER = "user"
+    USER_CREDENTIALS = "user_credentials"
     USER_ACTION_TOKEN = "user_action_token"
     USER_SESSION = "user_session"
     USER_EMAIL = "user_email"

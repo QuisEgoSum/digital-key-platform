@@ -1,0 +1,13 @@
+mode: test
+
+infra:
+  persistence:
+    databases:
+      postgresql:
+        db: dkp-tests
+      redis:
+        db: 1
+
+logger:
+  level: INFO
+  format: plain

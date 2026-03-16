@@ -16,7 +16,7 @@ from infra.persistence.sqlalchemy.mapping import (
 
 async def insert_session(
     user_id: int,
-    created_ip: str,
+    created_ip: str | None,
 ) -> UserSessionDTO:
     stmt = (
         insert(UserSessionRow)

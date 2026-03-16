@@ -26,7 +26,7 @@ from infra.audit.enums import (
 def map_request_confirm_email_success(
     *,
     user_id: int,
-    ip_address: str,
+    ip_address: str | None,
     user_email: UserEmailDTO,
     action_token: UserActionTokenDTO,
     flow_session: UserFlowSessionEmailVerificationDTO,
@@ -64,7 +64,7 @@ def map_request_confirm_email_success(
 
 def map_request_confirm_email_suppressed(
     *,
-    ip_address: str,
+    ip_address: str | None,
     flow_session: UserFlowSessionEmailVerificationDTO,
 ) -> AuditEventCommand:
     return AuditEventCommand(

@@ -17,9 +17,9 @@ class UserSessionRow(BaseUUIDPK):
         ForeignKey("user.users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_ip: Mapped[str] = mapped_column(
+    created_ip: Mapped[str | None] = mapped_column(
         INET(),
-        nullable=False,
+        nullable=True,
     )
     is_deleted: Mapped[bool] = mapped_column(
         Boolean(),

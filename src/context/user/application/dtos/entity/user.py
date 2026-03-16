@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
 
-from context.user.application.dtos.entity.user_credentials import UserCredentialsDTO
+from context.user.application.dtos.entity.user_credential import UserCredentialsDTO
 from context.user.application.dtos.entity.user_email import UserEmailDTO
 from context.user.application.enums.user import UserStatus
 

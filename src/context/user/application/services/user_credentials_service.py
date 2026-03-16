@@ -25,3 +25,10 @@ async def verify_user_credentials(
         hashed_password=login_details.credentials.password_hash,
     ):
         raise InvalidCredentialsError("invalid_password")
+
+
+async def set_new_password(user_id: int, password: str) -> None:
+    await user_credentials_dao.set_new_password(
+        user_id=user_id,
+        password_hash=hash_password(password),
+    )

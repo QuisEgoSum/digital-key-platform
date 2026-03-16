@@ -1,6 +1,7 @@
 from context.user.application.dtos.command.auth import (
     UserConfirmPasswordByCodeCommand,
     UserConfirmPasswordByLinkCommand,
+    UserPasswordResetCommand,
     UserRequestPasswordResetCommand,
 )
 from context.user.application.dtos.entity.user_action_token import UserActionTokenDTO
@@ -8,6 +9,8 @@ from context.user.application.dtos.entity.user_email import UserEmailDTO
 from context.user.application.dtos.entity.user_flow_session import (
     UserFlowSessionPasswordResetDTO,
 )
+from context.user.application.dtos.entity.user_session import UserSessionStorageDTO
+from context.user.application.errors.auth import PasswordResetSessionNotConfirmedError
 from context.user.application.errors.user_action_token import (
     InvalidUserActionTokenError,
 )
@@ -315,5 +318,93 @@ def map_confirm_password_by_link_failure(
                 "error_code": error.code,
             },
             entities=entities,
+        ),
+    )
+
+
+def map_password_reset_success(
+    command: UserPasswordResetCommand,
+    auth_session: UserSessionStorageDTO | None,
+) -> AuditEventCommand:
+    entities: list[AuditEntityRefDTO] = [
+        AuditEntityRefDTO(
+            type=AuditEntityType.USER_FLOW_SESSION,
+            id=command.flow_session.session_id,
+            role=AuditEventEntityRoleType.FLOW,
+            extra={"kind": command.flow_session.kind},
+        ),
+    ]
+
+    if auth_session is not None:
+        entities.append(
+            AuditEntityRefDTO(
+                type=AuditEntityType.USER_SESSION,
+                id=auth_session.session_id,
+                role=AuditEventEntityRoleType.RESULT,
+            ),
+        )
+
+    return AuditEventCommand(
+        actor_type=AuditActorType.USER,
+        actor_key=command.flow_session.user_id,
+        subject_type=AuditSubjectType.USER_CREDENTIALS,
+        subject_id=command.flow_session.user_id,
+        scope_type=AuditScopeType.USER,
+        scope_id=command.flow_session.user_id,
+        result=AuditResultType.SUCCESS,
+        action=AuditActionType.PASSWORD_CHANGE,
+        ip_address=command.ip_address,
+        data=AuditEventDetailsDTO(
+            details={
+                "outcome": "set_password",
+            },
+            entities=entities,
+        ),
+    )
+
+
+def map_password_reset_failure(
+    command: UserPasswordResetCommand,
+    error: PasswordResetSessionNotConfirmedError,
+) -> AuditEventCommand:
+    result = AuditResultType.REJECTED
+    outcome = "flow_session_not_confirmed"
+    if command.flow_session.user_id is None:
+        result = AuditResultType.FAILURE
+        outcome = "flow_session_not_bound"
+
+    subject_type: AuditSubjectType | None = None
+    subject_id: int | None = None
+    scope_type: AuditScopeType | None = None
+    scope_id: int | None = None
+
+    if command.flow_session.user_id is not None:
+        subject_type = AuditSubjectType.USER_CREDENTIALS
+        scope_type = AuditScopeType.USER
+        subject_id = scope_id = command.flow_session.user_id
+
+    return AuditEventCommand(
+        actor_type=AuditActorType.ANONYMOUS,
+        actor_key=None,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        scope_type=scope_type,
+        scope_id=scope_id,
+        result=result,
+        action=AuditActionType.PASSWORD_CHANGE,
+        ip_address=command.ip_address,
+        data=AuditEventDetailsDTO(
+            details={
+                "outcome": outcome,
+                "error_code": error.code,
+            },
+            entities=[
+                AuditEntityRefDTO(
+                    type=AuditEntityType.USER_FLOW_SESSION,
+                    id=command.flow_session.session_id,
+                    role=AuditEventEntityRoleType.FLOW,
+                    extra={"kind": command.flow_session.kind},
+                ),
+            ],
         ),
     )

@@ -19,6 +19,7 @@ async def insert_user_email(
     user_id: int,
     email: str,
     is_primary: bool,
+    verified_at: datetime | None,
 ) -> UserEmailDTO:
     stmt = (
         insert(UserEmailRow)
@@ -26,6 +27,7 @@ async def insert_user_email(
             user_id=user_id,
             email=email,
             is_primary=is_primary,
+            verified_at=verified_at,
         )
         .returning(UserEmailRow.__table__)
     )

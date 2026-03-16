@@ -267,7 +267,7 @@ def upgrade() -> None:
             "The expiration of the session lifetime is not reflected in the table, "
             "redis ttl is responsible for this.",
         ),
-        sa.Column("created_ip", postgresql.INET(), nullable=False),
+        sa.Column("created_ip", postgresql.INET(), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["user.users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         schema="user",
