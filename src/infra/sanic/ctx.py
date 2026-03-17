@@ -7,7 +7,7 @@ from opentelemetry.context import Context
 from opentelemetry.trace import Span
 
 from config.models.components.server import ServerConfig
-from config.models.root import Config
+from config.models.root import AppConfig
 from infra.sanic.security.user_auth import UserAuthSessionDTO, UserFlowSessionAnyDTO
 
 
@@ -23,5 +23,5 @@ class AppSanicRequestCTX(SimpleNamespace):
 
 @dataclass()
 class AppSanicCTX(SimpleNamespace):
-    server_cfg: ServerConfig
-    cfg: Config
+    server_config: ServerConfig
+    config: AppConfig

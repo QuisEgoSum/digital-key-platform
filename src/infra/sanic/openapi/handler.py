@@ -24,7 +24,7 @@ async def get_docs(request: AppRequest) -> HTTPResponse:
     app: AppSanic = request.app
 
     return response.html(
-        get_redoc_html(urljoin(app.ctx.server_cfg.base_path + "/", "openapi")),
+        get_redoc_html(urljoin(app.ctx.server_config.base_path + "/", "openapi")),
         200,
     )
 

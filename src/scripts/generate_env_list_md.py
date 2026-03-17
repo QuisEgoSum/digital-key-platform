@@ -9,7 +9,7 @@ from typing import Annotated, Any, Literal, Union, get_args, get_origin
 from pydantic_core import PydanticUndefinedType
 from tabulate import tabulate
 
-from config.runtime.loader import config, manager
+from config.runtime.loader import get_config, manager
 
 
 def format_type(tp: type) -> str:
@@ -52,6 +52,7 @@ def format_default(val: Any) -> str:
 
 
 def generate_env_list() -> None:
+    config = get_config()
     output_path = Path(config.root_dir) / "docs/config/ENV_LIST.md"
     fields = manager.env_list
 

@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 from sanic import Blueprint, HTTPResponse, empty
 
-from config import config
 from context.user.application import use_cases
 from context.user.application.dtos.command.auth import (
     UserLoginCommand,
@@ -23,6 +22,7 @@ from context.user.application.errors.user import (
     UserBannedError,
     UserTemporaryBlockedError,
 )
+from context.user.application.errors.user_email import UserEmailAlreadyExistsError
 from infra import openapi
 from infra.http.headers.accept_language import parse_accept_language
 from infra.sanic import validator
@@ -39,18 +39,23 @@ from shared.regional.timezone import resolve_timezone
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
+    from config.models.root import AppConfig
+
 router = Blueprint("UserAuthLoginRouter")
 
 
 @router.post("/auth/register")
 @openapi.tag("User Auth")
+@openapi.errors(UserEmailAlreadyExistsError)
 @openapi.response(UserRegisterOutput, status=201)
 @validator.body(UserRegisterInput)
 async def user_register(
     request: AppRequest,
     body: UserRegisterInput,
 ) -> HTTPResponse:
-    """User registration."""
+    """Register a new user."""
+    config: AppConfig = request.app.ctx.config
+
     accept_locales = parse_accept_language(request.headers.get("Accept-Language"))
 
     locale = resolve_supported_locale(
@@ -79,7 +84,7 @@ async def user_register(
     request.ctx.flow_session = result.flow_session.storage
 
     response: HTTPResponse = json_response(
-        UserRegisterOutput(status=result.status),
+        UserRegisterOutput(status=result.status, user=result.user),
         status=201,
     )
 
@@ -89,9 +94,19 @@ async def user_register(
         cookie=config.context.user.get_flow_cookie_config_by_kind(
             result.flow_session.storage.kind,
         ),
-        server_policy=request.app.ctx.server_cfg.cookie_policy,
+        server_policy=request.app.ctx.server_config.cookie_policy,
         request_host=request.host,
     )
+
+    if result.auth_session:
+        request.ctx.session = result.auth_session.storage
+        add_cookie(
+            response,
+            value=result.auth_session.session_key,
+            cookie=config.context.user.authorization.cookie,
+            server_policy=request.app.ctx.server_config.cookie_policy,
+            request_host=request.host,
+        )
 
     return response
 
@@ -112,7 +127,9 @@ async def user_login(
     request: AppRequest,
     body: UserLoginInput,
 ) -> HTTPResponse:
-    """User login."""
+    """Authenticate a user by email and password."""
+    config: AppConfig = request.app.ctx.config
+
     command = UserLoginCommand(
         email=body.email,
         password=body.password,
@@ -135,13 +152,13 @@ async def user_login(
 
     response: HTTPResponse = json_response(response_payload)
 
-    if result.session is not None:
-        request.ctx.session = result.session.storage
+    if result.auth_session is not None:
+        request.ctx.session = result.auth_session.storage
         add_cookie(
             response,
-            value=result.session.session_key,
+            value=result.auth_session.session_key,
             cookie=config.context.user.authorization.cookie,
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
     elif result.flow_session is not None:
@@ -152,7 +169,7 @@ async def user_login(
             cookie=config.context.user.get_flow_cookie_config_by_kind(
                 result.flow_session.storage.kind,
             ),
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 
@@ -165,6 +182,8 @@ async def user_login(
 @inject_user_session()
 async def logout(request: AppRequest, session: UserAuthSessionDTO) -> HTTPResponse:
     """User logout."""
+    config: AppConfig = request.app.ctx.config
+
     command = UserLogoutCommand(
         session=session,
         ip_address=get_request_ip_address(request),
@@ -177,7 +196,7 @@ async def logout(request: AppRequest, session: UserAuthSessionDTO) -> HTTPRespon
     delete_cookie(
         response,
         cookie=config.context.user.authorization.cookie,
-        server_policy=request.app.ctx.server_cfg.cookie_policy,
+        server_policy=request.app.ctx.server_config.cookie_policy,
         request_host=request.host,
     )
 

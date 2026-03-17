@@ -4,10 +4,10 @@ from dataclasses import asdict
 from sqlalchemy import and_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
-from context.user.application.dtos.entity.user_action_token import UserActionTokenDTO
-from context.user.application.dtos.payload.user_action_token import (
-    UserActionTokenInsertPayload,
+from context.user.application.dtos.data.user_action_token import (
+    UserActionTokenInsertData,
 )
+from context.user.application.dtos.entity.user_action_token import UserActionTokenDTO
 from context.user.application.enums.user_action_token import (
     UserActionTokenKind,
     UserActionTokenStatusType,
@@ -43,7 +43,7 @@ async def cancel_active_user_kind_tokens(
 
 
 async def insert_user_action_token(
-    payload: UserActionTokenInsertPayload,
+    payload: UserActionTokenInsertData,
 ) -> UserActionTokenDTO:
     stmt = (
         insert(UserActionTokenRow)

@@ -32,10 +32,10 @@ class CreateVerificationFlowResult:
 
 
 @dataclass()
-class CreateVerificationFlowFactory:
+class UserAuthFactory:
     db: DBContext
 
-    async def __call__(
+    async def create_email_verification_flow(
         self,
         user_id: int,
         email_id: int,
@@ -63,7 +63,7 @@ class CreateVerificationFlowFactory:
 
 
 @pytest.fixture()
-def create_verification_flow_factory(
+def user_auth_factory(
     db_context: DBContext,
-) -> CreateVerificationFlowFactory:
-    return CreateVerificationFlowFactory(db_context)
+) -> UserAuthFactory:
+    return UserAuthFactory(db_context)

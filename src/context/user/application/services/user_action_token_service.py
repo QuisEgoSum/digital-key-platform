@@ -1,10 +1,10 @@
-from config import config
+from config.runtime.loader import get_config
+from context.user.application.dtos.data.user_action_token import (
+    UserActionTokenInsertData,
+)
 from context.user.application.dtos.entity.user_action_token import (
     UserActionTokenDTO,
     UserActionTokenGeneratedDTO,
-)
-from context.user.application.dtos.payload.user_action_token import (
-    UserActionTokenInsertPayload,
 )
 from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
@@ -31,8 +31,14 @@ async def create_action_token(
     channel: UserActionTokenChannelType,
     channel_id: int,
 ) -> tuple[UserActionTokenDTO, UserActionTokenGeneratedDTO]:
-    cfg = config.context.user.get_token_config_by_kind(kind)
-    token = generate_action_token(cfg, kind)
+    config = get_config()
+    flow_config = config.context.user.get_token_config_by_kind(kind)
+
+    token = generate_action_token(
+        flow_config=flow_config,
+        kind=kind,
+        secret_key=config.security.tokens.secret_key,
+    )
 
     add_debug_artifact(f"user-action-token-{kind!s}-short", token.short_token)
     add_debug_artifact(f"user-action-token-{kind!s}-long", token.long_token)
@@ -51,14 +57,14 @@ async def create_action_token(
         )
 
     token_dto = await user_action_token_dao.insert_user_action_token(
-        UserActionTokenInsertPayload(
+        UserActionTokenInsertData(
             user_id=user_id,
             kind=kind,
             channel_id=channel_id,
             channel=channel,
             short_token_hash=token.short_token_hash,
             long_token_hash=token.long_token_hash,
-            expires_at=current_datetime() + cfg.expires_interval,
+            expires_at=current_datetime() + flow_config.expires_interval,
         ),
     )
 
@@ -66,23 +72,24 @@ async def create_action_token(
 
 
 def generate_action_token(
-    cfg: UserActionTokenConfig,
+    flow_config: UserActionTokenConfig,
     kind: UserActionTokenKind,
+    secret_key: str,
 ) -> UserActionTokenGeneratedDTO:
-    short_token = generate_numeric_token(length=cfg.short_token_length)
-    long_token = generate_urlsafe_token(nbytes=cfg.long_token_bytes)
+    short_token = generate_numeric_token(length=flow_config.short_token_length)
+    long_token = generate_urlsafe_token(nbytes=flow_config.long_token_bytes)
 
     return UserActionTokenGeneratedDTO(
         short_token=short_token,
         long_token=long_token,
         short_token_hash=compute_scoped_hmac(
             value=short_token,
-            secret=config.security.tokens.secret_key,
+            secret=secret_key,
             scope=kind.value,
         ),
         long_token_hash=compute_scoped_hmac(
             value=long_token,
-            secret=config.security.tokens.secret_key,
+            secret=secret_key,
             scope=kind.value,
         ),
     )
@@ -93,6 +100,8 @@ async def verify_short_token(
     kind: UserActionTokenKind,
     token: str,
 ) -> UserActionTokenDTO:
+    config = get_config()
+
     action_token = await user_action_token_dao.get_active_user_token_by_user_id(
         user_id=user_id,
         kind=kind,
@@ -123,6 +132,8 @@ async def verify_link_token(
     kind: UserActionTokenKind,
     token: str,
 ) -> UserActionTokenDTO:
+    config = get_config()
+
     long_token_hash = compute_scoped_hmac(
         value=token,
         secret=config.security.tokens.secret_key,

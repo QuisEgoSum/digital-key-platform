@@ -3,17 +3,13 @@ from ipaddress import ip_address
 from infra.sanic.http.request import AppRequest
 
 
-class InvalidRequestIpError(RuntimeError):
-    """Request IP address is missing or invalid."""
-
-
 def get_request_ip_address(request: AppRequest) -> str | None:
     """Returns the client IP address from the request."""
-    server_cfg = request.app.ctx.server_cfg
+    server_config = request.app.ctx.server_config
 
     raw_ip: str | None = None
 
-    if server_cfg.trust_proxy_headers:
+    if server_config.trust_proxy_headers:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
             raw_ip = forwarded.split(",")[0].strip()

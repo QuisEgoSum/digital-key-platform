@@ -9,13 +9,13 @@ import pytest
 
 from _pytest.monkeypatch import MonkeyPatch
 from alembic import command
-from alembic.config import Config
+from alembic.config import Config as AlembicConfig
 from asyncpg import Connection
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy_tx_context import SQLAlchemyTransactionContext
 
-from config import config
+from config.runtime.loader import get_config
 from infra.persistence.postgresql import connection as psql_connection
 from infra.persistence.redis.connection import redis
 
@@ -29,7 +29,9 @@ def prepare_template_db() -> Generator[None]:
     `CREATE DATABASE ... TEMPLATE ...`, which is significantly faster than
     running migrations for every test.
     """
-    psql_c = config.infra.persistence.databases.postgresql
+    app_config = get_config()
+
+    psql_c = app_config.infra.persistence.databases.postgresql
 
     main_psql_uri = f"postgresql://{psql_c.username}:{psql_c.password}@{psql_c.host}:{psql_c.port}/postgres"
     template_psql_uri = f"postgresql://{psql_c.username}:{psql_c.password}@{psql_c.host}:{psql_c.port}/{psql_c.db}"
@@ -38,7 +40,7 @@ def prepare_template_db() -> Generator[None]:
         cur.execute(f'DROP DATABASE IF EXISTS "{psql_c.db}" WITH (FORCE)')
         cur.execute(f'CREATE DATABASE "{psql_c.db}"')
 
-    cfg = Config()
+    cfg = AlembicConfig()
 
     migrations_path = os.path.join(os.path.dirname(__file__), "../../migrations")
 
@@ -65,7 +67,9 @@ async def db_context(
 
     After the test finishes, the engine is disposed and the database is dropped.
     """
-    psql_c = config.infra.persistence.databases.postgresql
+    app_config = get_config()
+
+    psql_c = app_config.infra.persistence.databases.postgresql
 
     test_db = f"{psql_c.db}_{uuid.uuid4().hex[:8]}"
 

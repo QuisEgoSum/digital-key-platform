@@ -14,14 +14,16 @@ from context.user.application.types.auth import UserLoginStatus, UserRegisterSta
 
 @dataclass(frozen=True)
 class UserRegisterResult:
+    auth_session: UserSessionCreateResult | None
     flow_session: UserFlowSessionCreateResult[UserFlowSessionEmailVerificationDTO]
     status: UserRegisterStatus
+    user: UserMeDTO | None
 
 
 @dataclass(frozen=True)
 class UserLoginResult:
     user: UserMeDTO
-    session: UserSessionCreateResult | None
+    auth_session: UserSessionCreateResult | None
     flow_session: (
         UserFlowSessionCreateResult[UserFlowSessionEmailVerificationDTO] | None
     )

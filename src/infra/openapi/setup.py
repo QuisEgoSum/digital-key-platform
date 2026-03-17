@@ -2,8 +2,7 @@ import os
 
 from typing import Any
 
-from config import config
-from config.models.components.project import ProjectConfig
+from config.models.root import AppConfig
 from infra import openapi
 from shared.utils.logger import get_logger
 
@@ -11,10 +10,12 @@ logger = get_logger(__name__)
 
 
 def setup_openapi(
-    project: ProjectConfig,
+    config: AppConfig,
     *,
     title: str | None = None,
 ) -> None:
+    project = config.project
+
     project_service_type: str = project.service
 
     openapi_spec = openapi.utils.get_raw_openapi()

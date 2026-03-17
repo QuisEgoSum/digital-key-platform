@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from unittest.mock import AsyncMock
 
 import pytest
@@ -7,27 +8,28 @@ from _pytest.monkeypatch import MonkeyPatch
 from context.user.infra.gateways.email import user_email_agent
 
 
+@dataclass()
+class UserEmailAgentMock:
+    send_email_verification_email: AsyncMock
+    send_user_password_reset_email: AsyncMock
+
+
 @pytest.fixture()
-async def mock_send_email_verification_email(monkeypatch: MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock()
+def user_email_agent_mock(monkeypatch: MonkeyPatch) -> UserEmailAgentMock:
+    mock = UserEmailAgentMock(
+        send_email_verification_email=AsyncMock(),
+        send_user_password_reset_email=AsyncMock(),
+    )
 
     monkeypatch.setattr(
         user_email_agent,
         "send_email_verification_email",
-        mock,
+        mock.send_email_verification_email,
     )
-
-    return mock
-
-
-@pytest.fixture()
-async def mock_send_user_password_reset_email(monkeypatch: MonkeyPatch) -> AsyncMock:
-    mock = AsyncMock()
-
     monkeypatch.setattr(
         user_email_agent,
         "send_user_password_reset_email",
-        mock,
+        mock.send_user_password_reset_email,
     )
 
     return mock

@@ -1,6 +1,6 @@
 from typing import Final
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from context.user.application.enums.user_action_token import UserActionTokenKind
 from context.user.application.enums.user_flow_session import UserFlowSessionKind
@@ -20,6 +20,27 @@ class UserAuthorizationConfig(BaseModel, frozen=True):
             max_age=DEFAULT_COOKIE_MAX_AGE,
         ),
     )
+    login_requires_verified_email: bool = Field(
+        True,
+        description="If True, user must verify email before login is allowed.",
+    )
+    hide_email_existence_on_register: bool = Field(
+        True,
+        description="If True, prevents account enumeration by returning the same response "
+        "when registering an already existing email.",
+    )
+
+    @model_validator(mode="after")
+    def validate_flags(self) -> "UserAuthorizationConfig":
+        if (
+            not self.login_requires_verified_email
+            and self.hide_email_existence_on_register
+        ):
+            raise ValueError(
+                "hide_email_existence_on_register=True requires "
+                "login_requires_verified_email=True",
+            )
+        return self
 
 
 class UserEmailVerificationConfig(BaseModel, frozen=True):
@@ -57,6 +78,11 @@ class UserResetPasswordConfig(BaseModel, frozen=True):
     auto_login_on_success: bool = Field(
         True,
         description="Automatically authorize the user after successful completion of the flow..",
+    )
+    hide_email_existence_on_request: bool = Field(
+        True,
+        description="If True, prevents account enumeration by returning the same response for existing "
+        "and non-existing emails when requesting a password reset.",
     )
 
 

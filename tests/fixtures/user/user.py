@@ -1,13 +1,10 @@
-from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pytest
 
-from sqlalchemy import select
-
+from context.user.application.dtos.data.user import UserCreateData
 from context.user.application.dtos.entity.user import UserDTO
 from context.user.application.dtos.entity.user_email import UserEmailDTO
-from context.user.application.dtos.payload.user import UserCreatePayload
 from context.user.application.services import (
     user_credentials_service,
     user_email_service,
@@ -16,6 +13,16 @@ from context.user.application.services import (
 from context.user.infra.models import UserRow
 from infra.persistence.postgresql.connection import DBContext
 from shared.utils.datetime_utils import current_datetime
+from utils.query import BaseQuery
+
+
+@dataclass()
+class UserQuery(BaseQuery[UserRow, int]): ...
+
+
+@pytest.fixture()
+def user_query(db_context: DBContext) -> UserQuery:
+    return UserQuery(db_context, UserRow, UserRow.id)
 
 
 @dataclass()
@@ -25,10 +32,10 @@ class CreateUserResult:
 
 
 @dataclass()
-class CreateUserFactory:
+class UserFactory:
     db: DBContext
 
-    async def __call__(
+    async def create(
         self,
         *,
         email: str = "user@example.com",
@@ -40,7 +47,7 @@ class CreateUserFactory:
     ) -> CreateUserResult:
         async with self.db.transaction():
             user = await user_service.create_user(
-                UserCreatePayload(
+                UserCreateData(
                     name=name,
                     locale=locale,
                     timezone=timezone,
@@ -61,37 +68,5 @@ class CreateUserFactory:
 
 
 @pytest.fixture()
-def create_user_factory(db_context: DBContext) -> CreateUserFactory:
-    return CreateUserFactory(db_context)
-
-
-@dataclass()
-class GetUserByIdFactory:
-    db: DBContext
-
-    async def __call__(self, user_id: int) -> UserRow:
-        async with self.db.session():
-            stmt = select(UserRow).where(UserRow.id == user_id)
-            result = await self.db.execute(stmt)
-            return result.scalar_one()
-
-
-@pytest.fixture()
-def get_user_by_id_factory(db_context: DBContext) -> GetUserByIdFactory:
-    return GetUserByIdFactory(db_context)
-
-
-@dataclass()
-class GetUsersFactory:
-    db: DBContext
-
-    async def __call__(self) -> Sequence[UserRow]:
-        async with self.db.session():
-            stmt = select(UserRow)
-            result = await self.db.execute(stmt)
-            return result.scalars().all()
-
-
-@pytest.fixture()
-def get_users_factory(db_context: DBContext) -> GetUsersFactory:
-    return GetUsersFactory(db_context)
+def user_factory(db_context: DBContext) -> UserFactory:
+    return UserFactory(db_context)

@@ -8,6 +8,7 @@ from context.user.application.types.auth import UserRegisterStatus
 
 class UserRegisterOutput(BaseModel):
     status: UserRegisterStatus
+    user: UserMeDTO | None = None
 
 
 class UserLoginLoggedInOutput(BaseModel):

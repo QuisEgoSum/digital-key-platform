@@ -21,7 +21,7 @@ def build_cookie_set(
 
     normalized_host = normalize_request_host(request_host)
     domain = resolve_cookie_domain(
-        domain_cfg=policy.domain,
+        domain_config=policy.domain,
         request_host=normalized_host,
     )
 
@@ -49,7 +49,7 @@ def build_cookie_delete(
 
     normalized_host = normalize_request_host(request_host)
     domain = resolve_cookie_domain(
-        domain_cfg=policy.domain,
+        domain_config=policy.domain,
         request_host=normalized_host,
     )
 
@@ -67,12 +67,12 @@ def merge_policy(
     if override is None:
         return base
 
-    domain_cfg = override.domain or base.domain
-    defaults_cfg = base.defaults
+    domain_config = override.domain or base.domain
+    defaults_config = base.defaults
     if override.defaults is not None:
-        defaults_cfg = merge_defaults(base.defaults, override.defaults)
+        defaults_config = merge_defaults(base.defaults, override.defaults)
 
-    return CookiePolicyConfig(domain=domain_cfg, defaults=defaults_cfg)
+    return CookiePolicyConfig(domain=domain_config, defaults=defaults_config)
 
 
 def merge_defaults(
@@ -92,22 +92,22 @@ def merge_defaults(
 
 def resolve_cookie_domain(
     *,
-    domain_cfg: CookieDomainConfig,
+    domain_config: CookieDomainConfig,
     request_host: str,
 ) -> str | None:
-    mode = domain_cfg.mode
+    mode = domain_config.mode
 
     if mode == "host":
         return None
 
     if mode == "fixed":
-        return domain_cfg.fixed
+        return domain_config.fixed
 
     if mode == "allow_list":
-        if request_host not in domain_cfg.allow_list:
+        if request_host not in domain_config.allow_list:
             raise CookieDomainResolutionError()
 
-        return domain_cfg.host_map.get(request_host, request_host)
+        return domain_config.host_map.get(request_host, request_host)
 
     return None
 

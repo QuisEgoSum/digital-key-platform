@@ -5,11 +5,11 @@ from context.user.application.errors.user_action_token import (
     InvalidUserActionTokenError,
 )
 from context.user.application.services import user_flow_session_service
-from fixtures.infra.audit import GetAuditEventsFactory
+from fixtures.infra.audit import AuditEventQuery
 from fixtures.sanic_types import AppSanicTestClient
-from fixtures.user.auth import CreateVerificationFlowFactory
-from fixtures.user.user import CreateUserFactory
-from fixtures.user.user_email import GetUserEmailsByUserIdFactory
+from fixtures.user.auth import UserAuthFactory
+from fixtures.user.user import UserFactory
+from fixtures.user.user_email import UserEmailQuery
 from infra.audit.enums import (
     AuditActionType,
     AuditActorType,
@@ -25,13 +25,13 @@ from utils.cookie import parse_set_cookie_headers_by_name
 
 async def test_confirm_email_by_code_success(
     sanic_user_http_client: AppSanicTestClient,
-    create_user_factory: CreateUserFactory,
-    create_verification_flow_factory: CreateVerificationFlowFactory,
-    get_user_emails_by_user_id_factory: GetUserEmailsByUserIdFactory,
-    get_audit_events_factory: GetAuditEventsFactory,
+    user_factory: UserFactory,
+    user_auth_factory: UserAuthFactory,
+    user_email_query: UserEmailQuery,
+    audit_event_query: AuditEventQuery,
 ) -> None:
-    user = await create_user_factory(verify_email=False)
-    verify_flow = await create_verification_flow_factory(
+    user = await user_factory.create(verify_email=False)
+    verify_flow = await user_auth_factory.create_email_verification_flow(
         user_id=user.user.id,
         email_id=user.email.id,
     )
@@ -45,7 +45,7 @@ async def test_confirm_email_by_code_success(
 
     assert res.status_code == HTTPStatus.NO_CONTENT
 
-    emails = await get_user_emails_by_user_id_factory(user.user.id)
+    emails = await user_email_query.get_by_user_id(user.user.id)
 
     assert len(emails) == 1
     assert emails[0].verified_at is not None
@@ -55,7 +55,7 @@ async def test_confirm_email_by_code_success(
     assert len(cookies) == 1
     assert cookies["ev_session"].is_deleted is True
 
-    audit_events = await get_audit_events_factory()
+    audit_events = await audit_event_query.all()
 
     assert len(audit_events) == 1
 
@@ -94,12 +94,12 @@ async def test_confirm_email_by_code_success(
 
 async def test_confirm_email_by_code_invalid_code(
     sanic_user_http_client: AppSanicTestClient,
-    create_user_factory: CreateUserFactory,
-    create_verification_flow_factory: CreateVerificationFlowFactory,
-    get_audit_events_factory: GetAuditEventsFactory,
+    user_factory: UserFactory,
+    user_auth_factory: UserAuthFactory,
+    audit_event_query: AuditEventQuery,
 ) -> None:
-    user = await create_user_factory(verify_email=False)
-    verify_flow = await create_verification_flow_factory(
+    user = await user_factory.create(verify_email=False)
+    verify_flow = await user_auth_factory.create_email_verification_flow(
         user_id=user.user.id,
         email_id=user.email.id,
     )
@@ -114,7 +114,7 @@ async def test_confirm_email_by_code_invalid_code(
     assert res.status_code == HTTPStatus.BAD_REQUEST
     assert res.json == InvalidUserActionTokenError("token_not_found").to_dict()
 
-    audit_events = await get_audit_events_factory()
+    audit_events = await audit_event_query.all()
 
     assert len(audit_events) == 1
 
@@ -154,7 +154,7 @@ async def test_confirm_email_by_code_invalid_code(
 
 async def test_confirm_email_by_code_suppress(
     sanic_user_http_client: AppSanicTestClient,
-    get_audit_events_factory: GetAuditEventsFactory,
+    audit_event_query: AuditEventQuery,
 ) -> None:
     flow_session = await user_flow_session_service.create_flow_session(
         user_id=None,
@@ -171,7 +171,7 @@ async def test_confirm_email_by_code_suppress(
     assert res.status_code == HTTPStatus.BAD_REQUEST
     assert res.json == InvalidUserActionTokenError("flow_session_not_bound").to_dict()
 
-    audit_events = await get_audit_events_factory()
+    audit_events = await audit_event_query.all()
 
     assert len(audit_events) == 1
 

@@ -2,7 +2,7 @@ import uuid
 
 from dataclasses import asdict
 
-from config import config
+from config.runtime.loader import get_config
 from context.user.application.dtos.entity.user_session import (
     UserSessionStorageDTO,
 )
@@ -22,12 +22,13 @@ async def create_session(
     user_id: int,
     ip_address: str | None,
 ) -> UserSessionCreateResult:
-    cfg = config.context.user.authorization.session
+    config = get_config()
+    auth_config = config.context.user.authorization.session
 
-    if cfg.active_session_limit != 0:
+    if auth_config.active_session_limit != 0:
         sessions = await user_session_dao.soft_delete_user_sessions_exceeding_limit(
             user_id=user_id,
-            limit=cfg.active_session_limit - 1,
+            limit=auth_config.active_session_limit - 1,
         )
 
         for session in sessions:
@@ -52,7 +53,7 @@ async def create_session(
     await session_storage.save_session(
         session_id=session.id,
         payload=asdict(storage_data),
-        ttl=cfg.expires_interval,
+        ttl=auth_config.expires_interval,
     )
 
     return UserSessionCreateResult(
@@ -65,14 +66,15 @@ async def verify_session(
     session_id: uuid.UUID,
     secret: str,
 ) -> UserSessionStorageDTO:
+    config = get_config()
+    auth_config = config.context.user.authorization.session
+
     raw_data = await session_storage.get_session_data(
         session_id=session_id,
     )
 
     if raw_data is None:
         raise UnauthorizedError()
-
-    cfg = config.context.user.authorization.session
 
     storage_data = map_storage_dict_to_storage_dto(raw_data)
 
@@ -85,10 +87,10 @@ async def verify_session(
     if storage_data.secret_hash != secret_hash:
         raise UnauthorizedError()
 
-    if cfg.auto_renewal:
+    if auth_config.auto_renewal:
         await session_storage.update_session_expire(
             session_id=session_id,
-            ttl=cfg.expires_interval,
+            ttl=auth_config.expires_interval,
         )
 
     return storage_data
@@ -98,10 +100,10 @@ async def update_session_expire(
     *,
     session_id: uuid.UUID,
 ) -> None:
-    cfg = config.context.user.authorization.session
+    config = get_config().context.user.authorization.session
     await session_storage.update_session_expire(
         session_id=session_id,
-        ttl=cfg.expires_interval,
+        ttl=config.expires_interval,
     )
 
 

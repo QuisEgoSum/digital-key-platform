@@ -2,27 +2,19 @@ from dataclasses import dataclass
 
 import pytest
 
-from sqlalchemy import select
-
 from context.user.infra.models import UserCredentialsRow
 from infra.persistence.postgresql.connection import DBContext
+from utils.query import BaseQuery
 
 
 @dataclass()
-class GetUserCredentialsByUserIDFactory:
-    db: DBContext
-
-    async def __call__(self, user_id: int) -> UserCredentialsRow:
-        async with self.db.session():
-            stmt = select(UserCredentialsRow).where(
-                UserCredentialsRow.user_id == user_id,
-            )
-            result = await self.db.execute(stmt)
-            return result.scalar_one()
+class UserCredentialsQuery(BaseQuery[UserCredentialsRow, int]): ...
 
 
-@pytest.fixture
-def get_user_credentials_by_user_id_factory(
-    db_context: DBContext,
-) -> GetUserCredentialsByUserIDFactory:
-    return GetUserCredentialsByUserIDFactory(db_context)
+@pytest.fixture()
+def user_credentials_query(db_context: DBContext) -> UserCredentialsQuery:
+    return UserCredentialsQuery(
+        db_context,
+        UserCredentialsRow,
+        UserCredentialsRow.user_id,
+    )

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from config import config
+from config.runtime.loader import get_config
 from context.user.application.dtos.command.auth import UserConfirmEmailByLinkCommand
 from context.user.application.dtos.result.auth import UserConfirmEmailResult
 from context.user.application.enums.user_action_token import (
@@ -39,6 +39,8 @@ async def confirm_email_by_link(
         InvalidUserActionTokenError
         UserEmailNotFoundError
     """
+    config = get_config()
+
     auth_session: UserSessionCreateResult | None = None
 
     try:

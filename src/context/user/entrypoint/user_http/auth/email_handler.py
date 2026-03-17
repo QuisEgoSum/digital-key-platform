@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 from sanic import Blueprint, HTTPResponse, empty
 
-from config import config
 from context.user.application import use_cases
 from context.user.application.dtos.command.auth import (
     UserConfirmEmailByCodeCommand,
@@ -24,6 +25,9 @@ from infra.sanic.security.user_auth import (
 )
 from infra.sanic.utils.request import get_request_ip_address
 from infra.sanic.utils.responses import add_cookie, delete_cookie
+
+if TYPE_CHECKING:
+    from config.models.root import AppConfig
 
 router = Blueprint("UserAuthEmailRouter")
 
@@ -66,6 +70,8 @@ async def email_verify(
     On success the email verification session is invalidated.
     Depending on application configuration, an authorization session may be created automatically.
     """
+    config: AppConfig = request.app.ctx.config
+
     command = UserConfirmEmailByCodeCommand(
         flow_session=session,
         token=body.token,
@@ -79,7 +85,7 @@ async def email_verify(
     delete_cookie(
         response,
         cookie=config.context.user.get_flow_cookie_config_by_kind(session.kind),
-        server_policy=request.app.ctx.server_cfg.cookie_policy,
+        server_policy=request.app.ctx.server_config.cookie_policy,
         request_host=request.host,
     )
 
@@ -90,7 +96,7 @@ async def email_verify(
             response,
             value=result.auth_session.session_key,
             cookie=config.context.user.authorization.cookie,
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 
@@ -114,6 +120,8 @@ async def email_verify_link(
     On success the email is verified. If an email verification session exists, it is invalidated.
     Depending on application configuration, an authorization session may be created automatically.
     """
+    config: AppConfig = request.app.ctx.config
+
     command = UserConfirmEmailByLinkCommand(
         flow_session=request.ctx.flow_session,
         token=body.token,
@@ -130,7 +138,7 @@ async def email_verify_link(
             cookie=config.context.user.get_flow_cookie_config_by_kind(
                 request.ctx.flow_session.kind,
             ),
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 
@@ -141,7 +149,7 @@ async def email_verify_link(
             response,
             value=result.auth_session.session_key,
             cookie=config.context.user.authorization.cookie,
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 

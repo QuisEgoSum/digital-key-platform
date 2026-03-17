@@ -4,12 +4,12 @@ from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
 
+from context.user.application.dtos.data.user import UserCreateData
 from context.user.application.dtos.entity.user import (
     UserDTO,
     UserLoginDetailsDTO,
     UserMeDTO,
 )
-from context.user.application.dtos.payload.user import UserCreatePayload
 from context.user.infra.models import UserCredentialsRow, UserEmailRow, UserRow
 from infra.persistence.postgresql.connection import db
 from infra.persistence.postgresql.funcs import (
@@ -23,7 +23,7 @@ from infra.persistence.sqlalchemy.mapping import (
 
 
 async def insert_user(
-    payload: UserCreatePayload,
+    payload: UserCreateData,
 ) -> UserDTO:
     stmt = insert(UserRow).values(**asdict(payload)).returning(UserRow.__table__)
     result = await db.execute(stmt)

@@ -55,8 +55,20 @@ def map_register_event_success(
 
 def map_register_event_failure(
     command: UserRegisterCommand,
-    flow_session: UserFlowSessionEmailVerificationDTO,
+    flow_session: UserFlowSessionEmailVerificationDTO | None = None,
 ) -> AuditEventCommand:
+    entities: list[AuditEntityRefDTO] = []
+
+    if flow_session is not None:
+        entities.append(
+            AuditEntityRefDTO(
+                type=AuditEntityType.USER_FLOW_SESSION,
+                id=flow_session.session_id,
+                role=AuditEventEntityRoleType.FLOW,
+                extra={"kind": flow_session.kind},
+            ),
+        )
+
     return AuditEventCommand(
         actor_type=AuditActorType.ANONYMOUS,
         subject_type=AuditSubjectType.USER,
@@ -70,13 +82,6 @@ def map_register_event_failure(
             details={
                 "outcome": "email_already_exists",
             },
-            entities=[
-                AuditEntityRefDTO(
-                    type=AuditEntityType.USER_FLOW_SESSION,
-                    id=flow_session.session_id,
-                    role=AuditEventEntityRoleType.FLOW,
-                    extra={"kind": flow_session.kind},
-                ),
-            ],
+            entities=entities,
         ),
     )

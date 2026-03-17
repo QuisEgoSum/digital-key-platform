@@ -21,7 +21,7 @@ from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import TYPE_CHECKING, Concatenate, Literal, ParamSpec, TypeVar, overload
 
-from config import config
+from config.runtime.loader import get_config
 from context.user.application.enums.user_flow_session import UserFlowSessionKind
 from context.user.public import user_security_api
 from context.user.public.user_security_api import (
@@ -150,7 +150,7 @@ def _build_user_session_loader(
     inject_kwarg_name: str | None,
 ) -> Callable[[AsyncRequestHandler[P, R]], AsyncRequestHandler[P, R]]:
     def decorator(func: AsyncRequestHandler[P, R]) -> AsyncRequestHandler[P, R]:
-        cfg = config.context.user.authorization.cookie
+        config = get_config().context.user.authorization.cookie
 
         if require_session:
             openapi.errors(UnauthorizedError)(func)
@@ -164,7 +164,7 @@ def _build_user_session_loader(
             **kwargs: P.kwargs,
         ) -> R:
             session: UserAuthSessionDTO | None = None
-            session_key = request.cookies.get(cfg.name)
+            session_key = request.cookies.get(config.name)
 
             if session_key is not None:
                 try:
@@ -222,7 +222,7 @@ def _build_user_flow_session_loader(
     inject_kwarg_name: str | None,
 ) -> Callable[[AsyncRequestHandler[P, R]], AsyncRequestHandler[P, R]]:
     def decorator(func: AsyncRequestHandler[P, R]) -> AsyncRequestHandler[P, R]:
-        cfg = config.context.user.get_flow_cookie_config_by_kind(kind)
+        config = get_config().context.user.get_flow_cookie_config_by_kind(kind)
         security_name = _get_user_flow_security_name(kind)
 
         if require_session:
@@ -237,7 +237,7 @@ def _build_user_flow_session_loader(
             **kwargs: P.kwargs,
         ) -> R:
             session: UserFlowSessionAnyDTO | None = None
-            session_key = request.cookies.get(cfg.name)
+            session_key = request.cookies.get(config.name)
 
             if session_key is not None:
                 try:

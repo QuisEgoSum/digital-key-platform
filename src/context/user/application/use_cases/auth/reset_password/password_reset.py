@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from config import config
+from config.runtime.loader import get_config
 from context.user.application.dtos.command.auth import UserPasswordResetCommand
 from context.user.application.dtos.result.auth import UserPasswordResetResult
 from context.user.application.enums.user_flow_session import UserFlowSessionKind
@@ -29,6 +29,8 @@ async def password_reset(command: UserPasswordResetCommand) -> UserPasswordReset
     Raises:
         PasswordResetSessionNotConfirmedError
     """
+    config = get_config()
+
     if not command.flow_session.is_confirmed or command.flow_session.user_id is None:
         ex = PasswordResetSessionNotConfirmedError()
         await audit_api.record_events(map_password_reset_failure(command, ex))

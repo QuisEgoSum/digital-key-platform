@@ -8,7 +8,7 @@ from context.user.application.enums.user_action_token import (
 
 
 @dataclass(frozen=True)
-class UserActionTokenInsertPayload:
+class UserActionTokenInsertData:
     user_id: int
     kind: UserActionTokenKind
     channel: UserActionTokenChannelType

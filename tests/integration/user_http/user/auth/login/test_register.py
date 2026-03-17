@@ -1,19 +1,22 @@
 from http import HTTPStatus
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
 
+from context.user.application.dtos.entity.user_session import UserSessionStorageDTO
 from context.user.application.enums.user import UserStatus
 from context.user.application.enums.user_action_token import (
     UserActionTokenKind,
     UserActionTokenStatusType,
 )
 from context.user.application.enums.user_flow_session import UserFlowSessionKind
-from fixtures.infra.audit import GetAuditEventsFactory
+from context.user.application.errors.user_email import UserEmailAlreadyExistsError
+from fixtures.config import AppConfigPatch
+from fixtures.infra.audit import AuditEventQuery
 from fixtures.sanic_types import AppSanicTestClient
-from fixtures.user.user import GetUsersFactory
-from fixtures.user.user_action_token import GetUserActionTokensFactory
-from fixtures.user.user_credentials import GetUserCredentialsByUserIDFactory
-from fixtures.user.user_email import GetUserEmailsByUserIdFactory
+from fixtures.user.user import UserQuery
+from fixtures.user.user_action_token import UserActionTokenQuery
+from fixtures.user.user_credentials import UserCredentialsQuery
+from fixtures.user.user_email import UserEmailQuery
+from fixtures.user.user_email_agent import UserEmailAgentMock
 from infra.audit.enums import (
     AuditActionType,
     AuditActorType,
@@ -33,12 +36,12 @@ if TYPE_CHECKING:
 
 async def test_register_success(
     sanic_user_http_client: AppSanicTestClient,
-    get_users_factory: GetUsersFactory,
-    get_user_action_tokens_factory: GetUserActionTokensFactory,
-    get_user_credentials_by_user_id_factory: GetUserCredentialsByUserIDFactory,
-    get_user_emails_by_user_id_factory: GetUserEmailsByUserIdFactory,
-    mock_send_email_verification_email: AsyncMock,
-    get_audit_events_factory: GetAuditEventsFactory,
+    user_query: UserQuery,
+    user_action_token_query: UserActionTokenQuery,
+    user_credentials_query: UserCredentialsQuery,
+    user_email_query: UserEmailQuery,
+    user_email_agent_mock: UserEmailAgentMock,
+    audit_event_query: AuditEventQuery,
 ) -> None:
     req, res = await sanic_user_http_client.post(
         "/v1/auth/register",
@@ -52,9 +55,9 @@ async def test_register_success(
     )
 
     assert res.status_code == HTTPStatus.CREATED
-    assert res.json == {"status": "email_verification_required"}
+    assert res.json == {"status": "email_verification_required", "user": None}
 
-    users = await get_users_factory()
+    users = await user_query.all()
 
     assert len(users) == 1
 
@@ -66,7 +69,7 @@ async def test_register_success(
     assert user.locale == "en"
     assert user.timezone == "UTC"
 
-    emails = await get_user_emails_by_user_id_factory(user.id)
+    emails = await user_email_query.get_by_user_id(user.id)
 
     assert len(emails) == 1
 
@@ -77,7 +80,7 @@ async def test_register_success(
     assert user_email.verified_at is None
     assert user_email.revoked_at is None
 
-    credentials = await get_user_credentials_by_user_id_factory(user.id)
+    credentials = await user_credentials_query.get(user.id)
 
     assert credentials.password_hash is not None
     assert credentials.password_hash != "password"
@@ -87,7 +90,7 @@ async def test_register_success(
     )
     assert credentials.password_changed_at is None
 
-    user_action_tokens = await get_user_action_tokens_factory()
+    user_action_tokens = await user_action_token_query.all()
 
     assert len(user_action_tokens) == 1
 
@@ -113,14 +116,13 @@ async def test_register_success(
     assert ev_cookie.value.startswith(str(flow_session.session_id))
     assert ev_cookie.is_deleted is False
 
-    mock_send_email_verification_email.assert_called_once()
-    mock_send_email_verification_email.assert_called_once()
-    _, kwargs = mock_send_email_verification_email.call_args
+    user_email_agent_mock.send_email_verification_email.assert_called_once()
+    _, kwargs = user_email_agent_mock.send_email_verification_email.call_args
 
     assert kwargs["user_email"].id == user_email.id
     assert kwargs["action_token"].id == ev_token.id
 
-    audit_events = await get_audit_events_factory()
+    audit_events = await audit_event_query.all()
 
     assert len(audit_events) == 2
 
@@ -168,7 +170,7 @@ async def test_register_success(
 
 async def test_register_duplicate(
     sanic_user_http_client: AppSanicTestClient,
-    get_audit_events_factory: GetAuditEventsFactory,
+    audit_event_query: AuditEventQuery,
 ) -> None:
     payload = {
         "email": "user@example.com",
@@ -182,7 +184,7 @@ async def test_register_duplicate(
     )
 
     assert res.status_code == HTTPStatus.CREATED
-    assert res.json == {"status": "email_verification_required"}
+    assert res.json == {"status": "email_verification_required", "user": None}
 
     req, res = await sanic_user_http_client.post(
         "/v1/auth/register",
@@ -190,7 +192,7 @@ async def test_register_duplicate(
     )
 
     assert res.status_code == HTTPStatus.CREATED
-    assert res.json == {"status": "email_verification_required"}
+    assert res.json == {"status": "email_verification_required", "user": None}
 
     flow_session = req.ctx.flow_session
 
@@ -209,7 +211,7 @@ async def test_register_duplicate(
     assert ev_cookie.value is not None
     assert ev_cookie.value.startswith(str(flow_session.session_id))
 
-    audit_events = await get_audit_events_factory()
+    audit_events = await audit_event_query.all()
 
     assert len(audit_events) == 3
 
@@ -231,4 +233,140 @@ async def test_register_duplicate(
                 "extra": {"kind": flow_session.kind},
             },
         ],
+    )
+
+
+async def test_register_success_with_login(
+    sanic_user_http_client: AppSanicTestClient,
+    app_config_patch: AppConfigPatch,
+    audit_event_query: AuditEventQuery,
+) -> None:
+    app_config_patch.replace_config(
+        {
+            (
+                "context",
+                "user",
+                "authorization",
+                "login_requires_verified_email",
+            ): False,
+            (
+                "context",
+                "user",
+                "authorization",
+                "hide_email_existence_on_register",
+            ): False,
+        },
+    )
+
+    payload = {
+        "email": "user@example.com",
+        "password": "password",
+        "name": "User",
+    }
+
+    req, res = await sanic_user_http_client.post(
+        "/v1/auth/register",
+        json=payload,
+    )
+
+    assert res.status_code == HTTPStatus.CREATED
+    assert res.json["status"] == "logged_in"
+    assert res.json["user"]["emails"][0]["email"] == "user@example.com"
+    assert res.json["user"]["name"] == "User"
+
+    assert req.ctx.session is not None
+
+    session = req.ctx.session
+
+    assert isinstance(session, UserSessionStorageDTO)
+
+    cookies = parse_set_cookie_headers_by_name(res.headers.get_list("set-cookie"))
+
+    assert len(cookies) == 2
+    assert "ev_session" in cookies
+    assert "session" in cookies
+
+    audit_events = await audit_event_query.all()
+
+    assert len(audit_events) == 3
+
+    register_event = audit_events[2]
+
+    audit_event_asserts(
+        register_event,
+        actor_type=AuditActorType.USER,
+        actor_key=session.user_id,
+        subject_type=AuditSubjectType.USER,
+        subject_id=session.user_id,
+        scope_type=AuditScopeType.USER,
+        scope_id=session.user_id,
+        action=AuditActionType.LOGIN,
+        result=AuditResultType.SUCCESS,
+        outcome="logged_in",
+        entities=[
+            {
+                "type": AuditEntityType.USER_SESSION,
+                "id": str(session.session_id),
+                "role": AuditEventEntityRoleType.RESULT,
+                "extra": None,
+            },
+        ],
+    )
+
+
+async def test_register_duplicate_with_error(
+    sanic_user_http_client: AppSanicTestClient,
+    app_config_patch: AppConfigPatch,
+    audit_event_query: AuditEventQuery,
+) -> None:
+    app_config_patch.replace_config(
+        {
+            (
+                "context",
+                "user",
+                "authorization",
+                "hide_email_existence_on_register",
+            ): False,
+        },
+    )
+
+    payload = {
+        "email": "user@example.com",
+        "password": "password",
+        "name": "User",
+    }
+
+    req, res = await sanic_user_http_client.post(
+        "/v1/auth/register",
+        json=payload,
+    )
+
+    assert res.status_code == HTTPStatus.CREATED
+    assert res.json == {"status": "email_verification_required", "user": None}
+
+    req, res = await sanic_user_http_client.post(
+        "/v1/auth/register",
+        json=payload,
+    )
+
+    assert res.status_code == HTTPStatus.CONFLICT
+    assert res.json == UserEmailAlreadyExistsError().to_dict()
+
+    assert req.ctx.session is None
+    assert req.ctx.flow_session is None
+
+    audit_events = await audit_event_query.all()
+
+    assert len(audit_events) == 3
+
+    register_event = audit_events[2]
+
+    audit_event_asserts(
+        register_event,
+        actor_type=AuditActorType.ANONYMOUS,
+        subject_type=AuditSubjectType.USER,
+        subject_extra={"email": "user@example.com"},
+        action=AuditActionType.REGISTER,
+        result=AuditResultType.REJECTED,
+        outcome="email_already_exists",
     )

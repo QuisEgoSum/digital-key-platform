@@ -1,25 +1,13 @@
-from collections.abc import Sequence
-from dataclasses import dataclass
-
 import pytest
-
-from sqlalchemy import select
 
 from context.user.infra.models import UserActionTokenRow
 from infra.persistence.postgresql.connection import DBContext
+from utils.query import BaseQuery
 
 
-@dataclass()
-class GetUserActionTokensFactory:
-    db: DBContext
-
-    async def __call__(self) -> Sequence[UserActionTokenRow]:
-        async with self.db.session():
-            stmt = select(UserActionTokenRow)
-            result = await self.db.execute(stmt)
-            return result.scalars().all()
+class UserActionTokenQuery(BaseQuery[UserActionTokenRow, int]): ...
 
 
 @pytest.fixture()
-def get_user_action_tokens_factory(db_context: DBContext) -> GetUserActionTokensFactory:
-    return GetUserActionTokensFactory(db_context)
+def user_action_token_query(db_context: DBContext) -> UserActionTokenQuery:
+    return UserActionTokenQuery(db_context, UserActionTokenRow, UserActionTokenRow.id)

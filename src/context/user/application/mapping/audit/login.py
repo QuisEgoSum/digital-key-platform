@@ -1,5 +1,8 @@
-from context.user.application.dtos.command.auth import UserLoginCommand
-from context.user.application.dtos.entity.user import UserLoginDetailsDTO
+from context.user.application.dtos.command.auth import (
+    UserLoginCommand,
+    UserRegisterCommand,
+)
+from context.user.application.dtos.entity.user import UserDTO, UserLoginDetailsDTO
 from context.user.application.dtos.entity.user_flow_session import (
     UserFlowSessionEmailVerificationDTO,
 )
@@ -58,17 +61,17 @@ def map_login_event_anonymous_failure(
 def map_login_event_success(
     command: UserLoginCommand,
     login_details: UserLoginDetailsDTO,
-    session: UserSessionStorageDTO | None,
+    auth_session: UserSessionStorageDTO | None,
     flow_session: UserFlowSessionEmailVerificationDTO | None,
     status: UserLoginStatus,
 ) -> AuditEventCommand:
     entities: list[AuditEntityRefDTO] = []
 
-    if session is not None:
+    if auth_session is not None:
         entities.append(
             AuditEntityRefDTO(
                 type=AuditEntityType.USER_SESSION,
-                id=session.session_id,
+                id=auth_session.session_id,
                 role=AuditEventEntityRoleType.RESULT,
             ),
         )
@@ -126,5 +129,35 @@ def map_login_event_identified_failure(
                 "outcome": _get_login_audit_outcome(error),
                 "error_code": error.code,
             },
+        ),
+    )
+
+
+def map_login_event_from_register(
+    command: UserRegisterCommand,
+    user: UserDTO,
+    auth_session: UserSessionStorageDTO,
+) -> AuditEventCommand:
+    return AuditEventCommand(
+        actor_type=AuditActorType.USER,
+        actor_key=user.id,
+        subject_type=AuditSubjectType.USER,
+        subject_id=user.id,
+        scope_type=AuditScopeType.USER,
+        scope_id=user.id,
+        result=AuditResultType.SUCCESS,
+        action=AuditActionType.LOGIN,
+        ip_address=command.ip_address,
+        data=AuditEventDetailsDTO(
+            details={
+                "outcome": "logged_in",
+            },
+            entities=[
+                AuditEntityRefDTO(
+                    type=AuditEntityType.USER_SESSION,
+                    id=auth_session.session_id,
+                    role=AuditEventEntityRoleType.RESULT,
+                ),
+            ],
         ),
     )

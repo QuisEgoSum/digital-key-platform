@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from config.runtime.loader import get_config
 from context.user.application.dtos.command.auth import UserLoginCommand
 from context.user.application.dtos.result.auth import UserLoginResult
 from context.user.application.enums.user_flow_session import UserFlowSessionKind
@@ -41,13 +42,18 @@ async def login(command: UserLoginCommand) -> UserLoginResult:
         UserBannedError
         UserTemporaryBlockedError
     """
+    config = get_config()
+    auth_config = config.context.user.authorization
+
     login_details: UserLoginDetailsDTO | None = None
-    session: UserSessionCreateResult | None = None
+    auth_session: UserSessionCreateResult | None = None
     flow_session: (
         UserFlowSessionCreateResult[UserFlowSessionEmailVerificationDTO] | None
     ) = None
+    status: UserLoginStatus
 
     try:
+
         async with db.transaction():
             login_details = await user_service.get_login_details(email=command.email)
 
@@ -58,17 +64,20 @@ async def login(command: UserLoginCommand) -> UserLoginResult:
 
             user_service.verify_login_allowed(login_details)
 
-            if login_details.is_verified_primary_email:
-                status: UserLoginStatus = "logged_in"
-                session = await user_session_service.create_session(
-                    user_id=login_details.id,
-                    ip_address=command.ip_address,
-                )
-            else:
+            if (
+                auth_config.login_requires_verified_email
+                and not login_details.is_verified_primary_email
+            ):
                 status = "email_verification_required"
                 flow_session = await user_flow_session_service.create_flow_session(
                     user_id=login_details.id,
                     kind=UserFlowSessionKind.EMAIL_VERIFICATION,
+                )
+            else:
+                status = "logged_in"
+                auth_session = await user_session_service.create_session(
+                    user_id=login_details.id,
+                    ip_address=command.ip_address,
                 )
     except ApplicationError as ex:
         if login_details is None:
@@ -84,7 +93,7 @@ async def login(command: UserLoginCommand) -> UserLoginResult:
         map_login_event_success(
             command=command,
             login_details=login_details,
-            session=session.storage if session is not None else None,
+            auth_session=auth_session.storage if auth_session is not None else None,
             flow_session=flow_session.storage if flow_session is not None else None,
             status=status,
         ),
@@ -92,7 +101,7 @@ async def login(command: UserLoginCommand) -> UserLoginResult:
 
     return UserLoginResult(
         user=map_login_details_to_user_me(login_details),
-        session=session,
+        auth_session=auth_session,
         flow_session=flow_session,
         status=status,
     )

@@ -41,11 +41,11 @@ def register_response_signals(app: Sanic[Any, Any]) -> None:
             additional_log_parameters["user_id"] = request.ctx.session.user_id
 
         if request.ctx.flow_session:
-            additional_log_parameters["session_id"] = (
+            additional_log_parameters["flow_session_id"] = (
                 request.ctx.flow_session.session_id
             )
-            additional_log_parameters["user_id"] = request.ctx.flow_session.user_id
-            additional_log_parameters["kind"] = request.ctx.flow_session.kind
+            additional_log_parameters["flow_user_id"] = request.ctx.flow_session.user_id
+            additional_log_parameters["flow_kind"] = request.ctx.flow_session.kind
 
         sanic_access_logger.info(
             "Sanic access",

@@ -6,16 +6,18 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from bootstrap.load_models import load_models
 from bootstrap.logging import setup_logging
-from config import config as application_config
+from config.runtime.loader import get_config
 from infra.persistence.postgresql.models import Base
 
-setup_logging(application_config.logger)
+app_config = get_config()
+
+setup_logging(app_config.logger)
 load_models()
 
 alembic_config = context.config
 alembic_config.set_main_option(
     "sqlalchemy.url",
-    application_config.infra.persistence.databases.postgresql.uri,
+    app_config.infra.persistence.databases.postgresql.uri,
 )
 
 target_metadata = Base.metadata

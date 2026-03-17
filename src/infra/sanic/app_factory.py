@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, cast
 from sanic import Config as SanicConfig, Request, Sanic
 
 from config.models.components.server import ServerConfig
-from config.models.root import Config
+from config.models.root import AppConfig
 from infra.sanic import listeners
 from infra.sanic.ctx import AppSanicCTX
 from infra.sanic.hooks.exception_handler import register_exception_handler
@@ -18,19 +18,19 @@ if TYPE_CHECKING:
 
 
 def app_factory(
-    server_cfg: ServerConfig,
-    cfg: Config,
+    server_config: ServerConfig,
+    config: AppConfig,
 ) -> AppSanic:
     app = Sanic(
-        cfg.project.service.name,
+        config.project.service.name,
         configure_logging=False,
         request_class=cast(
             "type[Request[Sanic[SanicConfig, SimpleNamespace], SimpleNamespace]]",
             AppRequest,
         ),
         ctx=AppSanicCTX(
-            server_cfg=server_cfg,
-            cfg=cfg,
+            server_config=server_config,
+            config=config,
         ),
     )
 

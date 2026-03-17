@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from config import config
+from config.runtime.loader import get_config
 from context.user.application.dtos.command.auth import UserConfirmEmailByCodeCommand
 from context.user.application.dtos.result.auth import UserConfirmEmailResult
 from context.user.application.enums.user_action_token import (
@@ -39,6 +39,8 @@ async def confirm_email_by_code(
         InvalidUserActionTokenError
         UserEmailNotFoundError
     """
+    config = get_config()
+
     if command.flow_session.user_id is None:
         ex = InvalidUserActionTokenError("flow_session_not_bound")
         await audit_api.record_events(

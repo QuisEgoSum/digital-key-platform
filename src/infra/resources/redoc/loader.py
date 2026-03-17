@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from config import config
+from config.runtime.loader import get_config
 
 _RAW_HTML: str | None = None
 
 
 def _load() -> str:
+    config = get_config()
     path = Path(config.root_dir) / "resources" / "redoc.html"
     return path.read_text(encoding="utf-8")
 

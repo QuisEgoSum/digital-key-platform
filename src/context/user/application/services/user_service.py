@@ -1,9 +1,9 @@
+from context.user.application.dtos.data.user import UserCreateData
 from context.user.application.dtos.entity.user import (
     UserDTO,
     UserLoginDetailsDTO,
     UserMeDTO,
 )
-from context.user.application.dtos.payload.user import UserCreatePayload
 from context.user.application.enums.user import UserStatus
 from context.user.application.errors.auth import InvalidCredentialsError
 from context.user.application.errors.user import (
@@ -13,7 +13,7 @@ from context.user.application.errors.user import (
 from context.user.infra.dao import user_dao
 
 
-async def create_user(payload: UserCreatePayload) -> UserDTO:
+async def create_user(payload: UserCreateData) -> UserDTO:
     return await user_dao.insert_user(payload)
 
 

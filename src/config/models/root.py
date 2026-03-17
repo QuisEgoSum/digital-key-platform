@@ -21,7 +21,7 @@ type ConfigMode = Literal[
 ]
 
 
-class Config(BaseModel, frozen=True):
+class AppConfig(BaseModel, frozen=True):
     project: ProjectConfig
 
     entrypoint: EntrypointConfig

@@ -2,7 +2,7 @@ import uuid
 
 from typing import Any, Literal, overload
 
-from config import config
+from config.runtime.loader import get_config
 from context.user.application.dtos.entity.user_flow_session import (
     UserFlowSessionAnyStorageDTO,
     UserFlowSessionEmailVerificationDTO,
@@ -40,7 +40,9 @@ async def create_flow_session(
     *,
     is_confirmed: bool | None = None,
 ) -> UserFlowSessionCreateResult[Any]:
-    cfg = config.context.user.get_flow_session_config_by_kind(kind)
+    config = get_config()
+    flow_config = config.context.user.get_flow_session_config_by_kind(kind)
+
     session_id = uuid.uuid4()
     secret = generate_urlsafe_token()
     secret_hash = compute_scoped_hmac(
@@ -66,7 +68,7 @@ async def create_flow_session(
         kind=kind,
         session_id=storage_data.session_id,
         payload=storage_data.model_dump(mode="json"),
-        ttl=cfg.expires_interval,
+        ttl=flow_config.expires_interval,
     )
 
     return UserFlowSessionCreateResult(
@@ -104,6 +106,7 @@ async def verify_flow_session(
     secret: str,
     kind: UserFlowSessionKind,
 ) -> UserFlowSessionAnyStorageDTO:
+    config = get_config()
     raw_data = await session_flow_storage.get_session_data(
         session_id=session_id,
         kind=kind,
@@ -131,11 +134,11 @@ async def update_flow_session_expire(
     session_id: uuid.UUID,
     kind: UserFlowSessionKind,
 ) -> None:
-    cfg = config.context.user.get_flow_session_config_by_kind(kind)
+    config = get_config().context.user.get_flow_session_config_by_kind(kind)
     await session_flow_storage.update_session_expire(
         session_id=session_id,
         kind=kind,
-        ttl=cfg.expires_interval,
+        ttl=config.expires_interval,
     )
 
 

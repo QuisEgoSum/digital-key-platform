@@ -1,7 +1,13 @@
-from typing import TYPE_CHECKING
-
+from config.runtime.loader import get_config
 from context.user.application.dtos.command.auth import UserRequestPasswordResetCommand
+from context.user.application.dtos.entity.user_email import UserEmailDTO
+from context.user.application.dtos.entity.user_flow_session import (
+    UserFlowSessionPasswordResetDTO,
+)
 from context.user.application.dtos.result.auth import UserRequestPasswordResetResult
+from context.user.application.dtos.result.user_flow_session import (
+    UserFlowSessionCreateResult,
+)
 from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
     UserActionTokenKind,
@@ -26,31 +32,26 @@ from infra.persistence.postgresql.connection import db
 from shared.errors.base import ApplicationError
 from shared.utils.background_tasks import schedule_in_background
 
-if TYPE_CHECKING:
-    from context.user.application.dtos.entity.user_email import UserEmailDTO
-    from context.user.application.dtos.entity.user_flow_session import (
-        UserFlowSessionPasswordResetDTO,
-    )
-    from context.user.application.dtos.result.user_flow_session import (
-        UserFlowSessionCreateResult,
-    )
-
 
 async def request_password_reset(
     command: UserRequestPasswordResetCommand,
 ) -> UserRequestPasswordResetResult:
-    """Request reset password email."""
-    created_flow_session: (
-        UserFlowSessionCreateResult[UserFlowSessionPasswordResetDTO] | None
-    ) = None
-    flow_session: UserFlowSessionPasswordResetDTO | None = command.flow_session
+    """Запрос сброса пароля пользователя.
+
+    Raises:
+        UserEmailNotFoundError: Если email не существует и отключен режим сокрытия
+            существования email.
+        UserEmailNotPrimaryError: Если email не является основным и отключен режим сокрытия
+            существования email.
+    """
+    config = get_config()
+    reset_config = config.context.user.password_reset
+
     user_email: UserEmailDTO | None = None
 
     try:
         async with db.transaction():
-            user_email = await user_email_service.get_email(
-                command.email,
-            )
+            user_email = await user_email_service.get_email(command.email)
 
             if not user_email.is_primary:
                 raise UserEmailNotPrimaryError()
@@ -64,53 +65,20 @@ async def request_password_reset(
                 )
             )
 
-            # With retries, the session may already exist.
-            if flow_session is None or flow_session.user_id != user_email.user_id:
-                created_flow_session = (
-                    await user_flow_session_service.create_flow_session(
-                        user_id=action_token.user_id,
-                        kind=UserFlowSessionKind.PASSWORD_RESET,
-                        is_confirmed=False,
-                    )
-                )
-                flow_session = created_flow_session.storage
-            else:
-                # We are re-specializing ttl in order not to violate the time limit
-                # for performing actions within the flow.
-                await user_flow_session_service.update_flow_session_expire(
-                    session_id=flow_session.session_id,
-                    kind=flow_session.kind,
-                )
+            flow_session, created_flow_session = await _ensure_flow_session(
+                existing_flow_session=command.flow_session,
+                user_id=user_email.user_id,
+            )
     except ApplicationError as ex:
-        is_suppress_exception = isinstance(
-            ex,
-            (UserEmailNotPrimaryError, UserEmailNotFoundError),
-        )
-
-        if is_suppress_exception and (
-            flow_session is None or flow_session.user_id is not None
-        ):
-            created_flow_session = await user_flow_session_service.create_flow_session(
-                user_id=None,
-                kind=UserFlowSessionKind.PASSWORD_RESET,
-                is_confirmed=False,
-            )
-            flow_session = created_flow_session.storage
-
-        await audit_api.record_events(
-            map_request_password_reset_failure(
-                command=command,
-                user_email=user_email,
-                flow_session=flow_session,
-                error=ex,
+        return await _handle_error(
+            command=command,
+            hide_email_existence_on_request=(
+                reset_config.hide_email_existence_on_request
             ),
+            error=ex,
+            user_email=user_email,
+            flow_session=command.flow_session,
         )
-
-        if is_suppress_exception:
-            return UserRequestPasswordResetResult(
-                created_flow_session=created_flow_session,
-            )
-        raise
 
     await schedule_in_background(
         user_email_agent.send_user_password_reset_email(
@@ -119,7 +87,6 @@ async def request_password_reset(
             token_generated=action_token_generated,
         ),
     )
-
     await audit_api.record_events(
         map_request_password_reset_success(
             command=command,
@@ -129,4 +96,84 @@ async def request_password_reset(
         ),
     )
 
-    return UserRequestPasswordResetResult(created_flow_session=created_flow_session)
+    return UserRequestPasswordResetResult(
+        created_flow_session=created_flow_session,
+    )
+
+
+async def _ensure_flow_session(
+    *,
+    existing_flow_session: UserFlowSessionPasswordResetDTO | None,
+    user_id: int,
+) -> tuple[
+    UserFlowSessionPasswordResetDTO,
+    UserFlowSessionCreateResult[UserFlowSessionPasswordResetDTO] | None,
+]:
+    if existing_flow_session is None or existing_flow_session.user_id != user_id:
+        created_flow_session = await user_flow_session_service.create_flow_session(
+            user_id=user_id,
+            kind=UserFlowSessionKind.PASSWORD_RESET,
+            is_confirmed=False,
+        )
+        return created_flow_session.storage, created_flow_session
+
+    await user_flow_session_service.update_flow_session_expire(
+        session_id=existing_flow_session.session_id,
+        kind=existing_flow_session.kind,
+    )
+    return existing_flow_session, None
+
+
+async def _handle_error(
+    command: UserRequestPasswordResetCommand,
+    *,
+    hide_email_existence_on_request: bool,
+    error: ApplicationError,
+    user_email: UserEmailDTO | None,
+    flow_session: UserFlowSessionPasswordResetDTO | None,
+) -> UserRequestPasswordResetResult:
+    if not hide_email_existence_on_request:
+        await audit_api.record_events(
+            map_request_password_reset_failure(
+                command=command,
+                user_email=user_email,
+                flow_session=flow_session,
+                error=error,
+            ),
+        )
+        raise
+
+    is_suppressed_error = isinstance(
+        error,
+        (UserEmailNotPrimaryError, UserEmailNotFoundError),
+    )
+
+    created_flow_session: (
+        UserFlowSessionCreateResult[UserFlowSessionPasswordResetDTO] | None
+    ) = None
+
+    if is_suppressed_error and (
+        flow_session is None or flow_session.user_id is not None
+    ):
+        created_flow_session = await user_flow_session_service.create_flow_session(
+            user_id=None,
+            kind=UserFlowSessionKind.PASSWORD_RESET,
+            is_confirmed=False,
+        )
+        flow_session = created_flow_session.storage
+
+    await audit_api.record_events(
+        map_request_password_reset_failure(
+            command=command,
+            user_email=user_email,
+            flow_session=flow_session,
+            error=error,
+        ),
+    )
+
+    if is_suppressed_error:
+        return UserRequestPasswordResetResult(
+            created_flow_session=created_flow_session,
+        )
+
+    raise

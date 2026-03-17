@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 from sanic import Blueprint, HTTPResponse, empty
 
-from config import config
 from context.user.application import use_cases
 from context.user.application.dtos.command.auth import (
     UserConfirmPasswordByCodeCommand,
@@ -16,6 +17,10 @@ from context.user.application.dtos.input.auth import (
 from context.user.application.errors.user_action_token import (
     InvalidUserActionTokenError,
 )
+from context.user.application.errors.user_email import (
+    UserEmailNotFoundError,
+    UserEmailNotPrimaryError,
+)
 from infra import openapi
 from infra.sanic import validator
 from infra.sanic.http.request import AppRequest
@@ -27,19 +32,25 @@ from infra.sanic.security.user_auth import (
 from infra.sanic.utils.request import get_request_ip_address
 from infra.sanic.utils.responses import add_cookie, delete_cookie
 
+if TYPE_CHECKING:
+    from config.models.root import AppConfig
+
 router = Blueprint("UserAuthPasswordRouter")
 
 
 @router.post("/auth/password/request-reset")
 @openapi.tag("User Auth Reset Password")
 @openapi.no_content()
+@openapi.errors(UserEmailNotFoundError, UserEmailNotPrimaryError)
 @validator.body(UserPasswordResetRequestInput)
 @load_password_reset_session()
 async def request_password_reset(
     request: AppRequest,
     body: UserPasswordResetRequestInput,
 ) -> HTTPResponse:
-    """Request confirm password reset."""
+    """Request a password reset email."""
+    config: AppConfig = request.app.ctx.config
+
     command = UserRequestPasswordResetCommand(
         flow_session=request.ctx.flow_session,
         email=body.email,
@@ -57,7 +68,7 @@ async def request_password_reset(
             cookie=config.context.user.get_flow_cookie_config_by_kind(
                 result.created_flow_session.storage.kind,
             ),
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 
@@ -104,6 +115,8 @@ async def password_verify_link(
 
     Does not require an authenticated session.
     """
+    config: AppConfig = request.app.ctx.config
+
     command = UserConfirmPasswordByLinkCommand(
         token=body.token,
         ip_address=get_request_ip_address(request),
@@ -121,7 +134,7 @@ async def password_verify_link(
             cookie=config.context.user.get_flow_cookie_config_by_kind(
                 result.created_flow_session.storage.kind,
             ),
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 
@@ -146,6 +159,8 @@ async def password_reset(
     On success the password reset session is invalidated.
     Depending on application configuration, an authorization session may be created automatically.
     """
+    config: AppConfig = request.app.ctx.config
+
     command = UserPasswordResetCommand(
         flow_session=session,
         password=body.password,
@@ -159,7 +174,7 @@ async def password_reset(
     delete_cookie(
         response,
         cookie=config.context.user.get_flow_cookie_config_by_kind(session.kind),
-        server_policy=request.app.ctx.server_cfg.cookie_policy,
+        server_policy=request.app.ctx.server_config.cookie_policy,
         request_host=request.host,
     )
 
@@ -170,7 +185,7 @@ async def password_reset(
             response,
             value=result.auth_session.session_key,
             cookie=config.context.user.authorization.cookie,
-            server_policy=request.app.ctx.server_cfg.cookie_policy,
+            server_policy=request.app.ctx.server_config.cookie_policy,
             request_host=request.host,
         )
 
