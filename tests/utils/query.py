@@ -30,7 +30,6 @@ class BaseQuery[TRow, TPK]:
 
     async def all(self) -> Sequence[TRow]:
         async with self.db.session():
-            print("self.pk_column", self.pk_column)
             stmt = select(self.model).order_by(self.pk_column.asc())
             result = await self.db.execute(stmt)
             return result.scalars().all()

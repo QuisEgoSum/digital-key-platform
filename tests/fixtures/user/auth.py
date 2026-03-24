@@ -12,6 +12,7 @@ from context.user.application.dtos.entity.user_flow_session import (
 from context.user.application.dtos.result.user_flow_session import (
     UserFlowSessionCreateResult,
 )
+from context.user.application.dtos.result.user_session import UserSessionCreateResult
 from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
     UserActionTokenKind,
@@ -20,6 +21,7 @@ from context.user.application.enums.user_flow_session import UserFlowSessionKind
 from context.user.application.services import (
     user_action_token_service,
     user_flow_session_service,
+    user_session_service,
 )
 from infra.persistence.postgresql.connection import DBContext
 
@@ -34,6 +36,15 @@ class CreateVerificationFlowResult:
 @dataclass()
 class UserAuthFactory:
     db: DBContext
+
+    @staticmethod
+    async def create_email_verification_session(
+        user_id: int | None = None,
+    ) -> UserFlowSessionCreateResult[UserFlowSessionEmailVerificationDTO]:
+        return await user_flow_session_service.create_flow_session(
+            user_id=user_id,
+            kind=UserFlowSessionKind.EMAIL_VERIFICATION,
+        )
 
     async def create_email_verification_flow(
         self,
@@ -50,16 +61,20 @@ class UserAuthFactory:
                 )
             )
 
-        flow_session = await user_flow_session_service.create_flow_session(
-            user_id=user_id,
-            kind=UserFlowSessionKind.EMAIL_VERIFICATION,
-        )
+        flow_session = await self.create_email_verification_session(user_id)
 
         return CreateVerificationFlowResult(
             action_token=action_token,
             action_token_generated=action_token_generated,
             flow_session=flow_session,
         )
+
+    async def create_auth_session(self, user_id: int) -> UserSessionCreateResult:
+        async with self.db.transaction():
+            return await user_session_service.create_session(
+                user_id=user_id,
+                ip_address=None,
+            )
 
 
 @pytest.fixture()

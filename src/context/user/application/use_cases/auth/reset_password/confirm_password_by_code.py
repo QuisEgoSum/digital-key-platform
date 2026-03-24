@@ -16,7 +16,7 @@ from infra.persistence.postgresql.connection import db
 
 
 async def confirm_password_by_code(command: UserConfirmPasswordByCodeCommand) -> None:
-    """Confirm password reset by code.
+    """Подтвердить сброс пароля по коду.
 
     Raises:
         InvalidUserActionTokenError

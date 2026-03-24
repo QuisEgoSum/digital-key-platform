@@ -30,9 +30,7 @@ if TYPE_CHECKING:
 async def confirm_password_by_link(
     command: UserConfirmPasswordByLinkCommand,
 ) -> UserConfirmPasswordResult:
-    """Confirm password reset by link.
-
-    Creates a PASSWORD_RESET session with the confirmation flag set, if there is none.
+    """Подтвердить сброс пароля по ссылке.
 
     Raises:
         InvalidUserActionTokenError

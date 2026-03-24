@@ -3,9 +3,11 @@ from context.user.application.enums.user_action_token import (
     UserActionTokenChannelType,
     UserActionTokenKind,
 )
+from context.user.application.errors.user_email import UserEmailAlreadyVerifiedError
 from context.user.application.mapping.audit.confirm_email import (
     map_request_confirm_email_success,
     map_request_confirm_email_suppressed,
+    map_request_confirm_email_with_error,
 )
 from context.user.application.services import (
     user_action_token_service,
@@ -14,14 +16,16 @@ from context.user.application.services import (
 from context.user.infra.gateways.email import user_email_agent
 from infra.audit import audit_api
 from infra.persistence.postgresql.connection import db
+from shared.errors.base import ApplicationError
 from shared.utils.background_tasks import schedule_in_background
 
 
 async def request_confirm_email(command: UserRequestConfirmEmailCommand) -> None:
-    """Request confirm email.
+    """Запросить подтверждение `email`.
 
     Raises:
         UserEmailNotFoundError
+        UserEmailAlreadyVerifiedError
     """
     if command.flow_session.user_id is None:
         await audit_api.record_events(
@@ -32,18 +36,32 @@ async def request_confirm_email(command: UserRequestConfirmEmailCommand) -> None
         )
         return
 
-    async with db.transaction():
-        user_email = await user_email_service.get_user_primary_email(
-            command.flow_session.user_id,
-        )
-        action_token, action_token_generated = (
-            await user_action_token_service.create_action_token(
-                user_id=command.flow_session.user_id,
-                kind=UserActionTokenKind.EMAIL_VERIFICATION,
-                channel=UserActionTokenChannelType.EMAIL,
-                channel_id=user_email.id,
+    try:
+        async with db.transaction():
+            user_email = await user_email_service.get_user_primary_email(
+                command.flow_session.user_id,
             )
+
+            if user_email.is_verified:
+                raise UserEmailAlreadyVerifiedError(user_email)
+
+            action_token, action_token_generated = (
+                await user_action_token_service.create_action_token(
+                    user_id=command.flow_session.user_id,
+                    kind=UserActionTokenKind.EMAIL_VERIFICATION,
+                    channel=UserActionTokenChannelType.EMAIL,
+                    channel_id=user_email.id,
+                )
+            )
+    except ApplicationError as ex:
+        await audit_api.record_events(
+            map_request_confirm_email_with_error(
+                ex,
+                ip_address=command.ip_address,
+                flow_session=command.flow_session,
+            ),
         )
+        raise
 
     await schedule_in_background(
         user_email_agent.send_email_verification_email(

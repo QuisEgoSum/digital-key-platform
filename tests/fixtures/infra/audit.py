@@ -8,8 +8,7 @@ from utils.query import BaseQuery
 
 
 @dataclass()
-class AuditEventQuery(BaseQuery[AuditEventRow, int]):
-    db: DBContext
+class AuditEventQuery(BaseQuery[AuditEventRow, int]): ...
 
 
 @pytest.fixture()

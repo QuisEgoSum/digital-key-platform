@@ -53,7 +53,16 @@ async def user_register(
     request: AppRequest,
     body: UserRegisterInput,
 ) -> HTTPResponse:
-    """Register a new user."""
+    """Зарегистрировать нового пользователя.
+
+    В случае успеха создает пользователя и устанавливает flow session для подтверждения email.
+
+    Конфигурацией приложения может быть настроено поведение:
+    - Авторизовывать пользователя без верификации email - в таком случае флоу подтверждения email является
+        не обязательным, но так же будет начат;
+    - Скрывать существования email при повторной регистрации - в таком случае вместо ошибки будет создана
+        flow session имитирующая успешную регистрацию.
+    """
     config: AppConfig = request.app.ctx.config
 
     accept_locales = parse_accept_language(request.headers.get("Accept-Language"))
@@ -78,7 +87,7 @@ async def user_register(
         ip_address=get_request_ip_address(request),
     )
 
-    result = await use_cases.auth.register_user(command)
+    result = await use_cases.auth.login.register_user(command)
 
     # For access log.
     request.ctx.flow_session = result.flow_session.storage
@@ -127,7 +136,13 @@ async def user_login(
     request: AppRequest,
     body: UserLoginInput,
 ) -> HTTPResponse:
-    """Authenticate a user by email and password."""
+    """Авторизация пользователя по email и password.
+
+    В случае успеха вернет пользователя и установит авторизационную сессию.
+
+    В случае, если для авторизации требуется подтвержденный email и email пользователя не был подтвержден установит
+    flow session для подтверждения email.
+    """
     config: AppConfig = request.app.ctx.config
 
     command = UserLoginCommand(
@@ -136,7 +151,7 @@ async def user_login(
         ip_address=get_request_ip_address(request),
     )
 
-    result = await use_cases.auth.login(command)
+    result = await use_cases.auth.login.login(command)
 
     if result.status == "logged_in":
         response_payload: BaseModel = UserLoginLoggedInOutput(
@@ -181,7 +196,10 @@ async def user_login(
 @openapi.no_content()
 @inject_user_session()
 async def logout(request: AppRequest, session: UserAuthSessionDTO) -> HTTPResponse:
-    """User logout."""
+    """Выход пользователя.
+
+    Удаляет авторизационную сессию пользователя.
+    """
     config: AppConfig = request.app.ctx.config
 
     command = UserLogoutCommand(
@@ -189,7 +207,7 @@ async def logout(request: AppRequest, session: UserAuthSessionDTO) -> HTTPRespon
         ip_address=get_request_ip_address(request),
     )
 
-    await use_cases.auth.logout(command)
+    await use_cases.auth.login.logout(command)
 
     response = empty()
 

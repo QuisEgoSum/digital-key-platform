@@ -36,7 +36,7 @@ from shared.utils.background_tasks import schedule_in_background
 async def request_password_reset(
     command: UserRequestPasswordResetCommand,
 ) -> UserRequestPasswordResetResult:
-    """Запрос сброса пароля пользователя.
+    """Запросить сброс пароля.
 
     Raises:
         UserEmailNotFoundError: Если email не существует и отключен режим сокрытия

@@ -100,7 +100,7 @@ def audit_event_asserts(
         actual_entities = audit_event.data.get("entities") if audit_event.data else None
         assert actual_entities == entities, (
             f"audit_event.data.entities mismatch: "
-            f"expected={entities!r}, actual={actual_entities!r}"
+            f"expected={entities!r}, \nactual={actual_entities!r}"
         )
 
     if entity_types is not None:

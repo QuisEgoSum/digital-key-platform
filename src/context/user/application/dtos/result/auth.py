@@ -9,7 +9,11 @@ from context.user.application.dtos.result.user_flow_session import (
     UserFlowSessionCreateResult,
 )
 from context.user.application.dtos.result.user_session import UserSessionCreateResult
-from context.user.application.types.auth import UserLoginStatus, UserRegisterStatus
+from context.user.application.types.auth import (
+    UserConfirmStatus,
+    UserLoginStatus,
+    UserRegisterStatus,
+)
 
 
 @dataclass(frozen=True)
@@ -31,11 +35,6 @@ class UserLoginResult:
 
 
 @dataclass(frozen=True)
-class UserConfirmEmailResult:
-    auth_session: UserSessionCreateResult | None
-
-
-@dataclass(frozen=True)
 class UserConfirmPasswordResult:
     created_flow_session: (
         UserFlowSessionCreateResult[UserFlowSessionPasswordResetDTO] | None
@@ -51,4 +50,11 @@ class UserRequestPasswordResetResult:
 
 @dataclass(frozen=True)
 class UserPasswordResetResult:
+    auth_session: UserSessionCreateResult | None
+
+
+@dataclass(frozen=True)
+class UserActionConfirmResult:
+    status: UserConfirmStatus
+    user_me: UserMeDTO | None
     auth_session: UserSessionCreateResult | None

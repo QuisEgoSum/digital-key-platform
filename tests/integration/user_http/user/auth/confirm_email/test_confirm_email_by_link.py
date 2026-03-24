@@ -4,7 +4,6 @@ from context.user.application.enums.user_flow_session import UserFlowSessionKind
 from context.user.application.errors.user_action_token import (
     InvalidUserActionTokenError,
 )
-from context.user.application.services import user_flow_session_service
 from fixtures.config import AppConfigPatch
 from fixtures.infra.audit import AuditEventQuery
 from fixtures.sanic_types import AppSanicTestClient
@@ -20,12 +19,11 @@ from infra.audit.enums import (
     AuditScopeType,
     AuditSubjectType,
 )
-from shared.errors.authorization import UnauthorizedError
 from utils.audit_asserts import audit_event_asserts
 from utils.cookie import parse_set_cookie_headers_by_name
 
 
-async def test_confirm_email_by_code_success(
+async def test_confirm_email_by_link_success(
     sanic_user_http_client: AppSanicTestClient,
     user_factory: UserFactory,
     user_auth_factory: UserAuthFactory,
@@ -41,8 +39,8 @@ async def test_confirm_email_by_code_success(
     sanic_user_http_client.cookies["ev_session"] = verify_flow.flow_session.session_key
 
     _, res = await sanic_user_http_client.post(
-        "/v1/auth/email/verify",
-        json={"token": verify_flow.action_token_generated.short_token},
+        "/v1/auth/email/verify-link",
+        json={"token": verify_flow.action_token_generated.long_token},
     )
 
     assert res.status_code == HTTPStatus.OK
@@ -76,7 +74,7 @@ async def test_confirm_email_by_code_success(
         result=AuditResultType.SUCCESS,
         details={
             "outcome": "email_verified",
-            "flow": "code",
+            "flow": "link",
         },
         entities=[
             {
@@ -88,14 +86,14 @@ async def test_confirm_email_by_code_success(
             {
                 "type": AuditEntityType.USER_FLOW_SESSION,
                 "id": str(verify_flow.flow_session.storage.session_id),
-                "role": AuditEventEntityRoleType.SOURCE,
+                "role": AuditEventEntityRoleType.RELATED,
                 "extra": {"kind": UserFlowSessionKind.EMAIL_VERIFICATION},
             },
         ],
     )
 
 
-async def test_confirm_email_by_code_invalid_code(
+async def test_confirm_email_by_link_success_without_flow_session(
     sanic_user_http_client: AppSanicTestClient,
     user_factory: UserFactory,
     user_auth_factory: UserAuthFactory,
@@ -107,17 +105,19 @@ async def test_confirm_email_by_code_invalid_code(
         email_id=user.email.id,
     )
 
-    sanic_user_http_client.cookies["ev_session"] = verify_flow.flow_session.session_key
-
     _, res = await sanic_user_http_client.post(
-        "/v1/auth/email/verify",
-        json={"token": verify_flow.action_token_generated.short_token + "00"},
+        "/v1/auth/email/verify-link",
+        json={"token": verify_flow.action_token_generated.long_token},
     )
 
-    assert res.status_code == HTTPStatus.BAD_REQUEST
-    assert res.json == InvalidUserActionTokenError("token_not_found").to_dict()
+    assert res.status_code == HTTPStatus.OK
+    assert res.json["status"] == "confirmed"
+
+    cookies = parse_set_cookie_headers_by_name(res.headers.get_list("set-cookie"))
 
     audit_events = await audit_event_query.all()
+
+    assert len(cookies) == 0
 
     assert len(audit_events) == 1
 
@@ -132,19 +132,12 @@ async def test_confirm_email_by_code_invalid_code(
         scope_type=AuditScopeType.USER,
         scope_id=user.user.id,
         action=AuditActionType.EMAIL_VERIFICATION_CONFIRM,
-        result=AuditResultType.REJECTED,
+        result=AuditResultType.SUCCESS,
         details={
-            "outcome": "token_mismatch",
-            "flow": "code",
-            "error_code": InvalidUserActionTokenError.code,
+            "outcome": "email_verified",
+            "flow": "link",
         },
         entities=[
-            {
-                "type": AuditEntityType.USER_FLOW_SESSION,
-                "id": str(verify_flow.flow_session.storage.session_id),
-                "role": AuditEventEntityRoleType.SOURCE,
-                "extra": {"kind": UserFlowSessionKind.EMAIL_VERIFICATION},
-            },
             {
                 "type": AuditEntityType.USER_ACTION_TOKEN,
                 "id": verify_flow.action_token.id,
@@ -155,24 +148,76 @@ async def test_confirm_email_by_code_invalid_code(
     )
 
 
-async def test_confirm_email_by_code_suppress(
+async def test_confirm_email_by_link_invalid_token(
     sanic_user_http_client: AppSanicTestClient,
+    user_factory: UserFactory,
+    user_auth_factory: UserAuthFactory,
     audit_event_query: AuditEventQuery,
 ) -> None:
-    flow_session = await user_flow_session_service.create_flow_session(
-        user_id=None,
-        kind=UserFlowSessionKind.EMAIL_VERIFICATION,
+    user = await user_factory.create(verify_email=False)
+    verify_flow = await user_auth_factory.create_email_verification_flow(
+        user_id=user.user.id,
+        email_id=user.email.id,
     )
 
-    sanic_user_http_client.cookies["ev_session"] = flow_session.session_key
+    sanic_user_http_client.cookies["ev_session"] = verify_flow.flow_session.session_key
 
     _, res = await sanic_user_http_client.post(
-        "/v1/auth/email/verify",
-        json={"token": "000000"},
+        "/v1/auth/email/verify-link",
+        json={"token": verify_flow.action_token_generated.long_token + "XX"},
     )
 
     assert res.status_code == HTTPStatus.BAD_REQUEST
-    assert res.json == InvalidUserActionTokenError("flow_session_not_bound").to_dict()
+    assert res.json == InvalidUserActionTokenError("token_not_found").to_dict()
+
+    audit_events = await audit_event_query.all()
+
+    assert len(audit_events) == 1
+
+    event = audit_events[0]
+
+    audit_event_asserts(
+        event,
+        actor_type=AuditActorType.ANONYMOUS,
+        scope_type=AuditScopeType.USER,
+        scope_id=user.user.id,
+        action=AuditActionType.EMAIL_VERIFICATION_CONFIRM,
+        result=AuditResultType.FAILURE,
+        details={
+            "outcome": "token_not_found",
+            "flow": "link",
+            "error_code": InvalidUserActionTokenError.code,
+        },
+        entities=[
+            {
+                "type": AuditEntityType.USER_FLOW_SESSION,
+                "id": str(verify_flow.flow_session.storage.session_id),
+                "role": AuditEventEntityRoleType.RELATED,
+                "extra": {"kind": UserFlowSessionKind.EMAIL_VERIFICATION},
+            },
+        ],
+    )
+
+
+async def test_confirm_email_by_link_invalid_token_without_flow_session(
+    sanic_user_http_client: AppSanicTestClient,
+    user_factory: UserFactory,
+    user_auth_factory: UserAuthFactory,
+    audit_event_query: AuditEventQuery,
+) -> None:
+    user = await user_factory.create(verify_email=False)
+    verify_flow = await user_auth_factory.create_email_verification_flow(
+        user_id=user.user.id,
+        email_id=user.email.id,
+    )
+
+    _, res = await sanic_user_http_client.post(
+        "/v1/auth/email/verify-link",
+        json={"token": verify_flow.action_token_generated.long_token + "XX"},
+    )
+
+    assert res.status_code == HTTPStatus.BAD_REQUEST
+    assert res.json == InvalidUserActionTokenError("token_not_found").to_dict()
 
     audit_events = await audit_event_query.all()
 
@@ -186,22 +231,14 @@ async def test_confirm_email_by_code_suppress(
         action=AuditActionType.EMAIL_VERIFICATION_CONFIRM,
         result=AuditResultType.FAILURE,
         details={
-            "outcome": "flow_session_not_bound",
-            "flow": "code",
+            "outcome": "token_not_found",
+            "flow": "link",
             "error_code": InvalidUserActionTokenError.code,
         },
-        entities=[
-            {
-                "type": AuditEntityType.USER_FLOW_SESSION,
-                "id": str(flow_session.storage.session_id),
-                "role": AuditEventEntityRoleType.SOURCE,
-                "extra": {"kind": UserFlowSessionKind.EMAIL_VERIFICATION},
-            },
-        ],
     )
 
 
-async def test_confirm_email_by_code_with_login(
+async def test_confirm_email_by_link_with_login(
     sanic_user_http_client: AppSanicTestClient,
     user_factory: UserFactory,
     user_auth_factory: UserAuthFactory,
@@ -228,8 +265,8 @@ async def test_confirm_email_by_code_with_login(
     sanic_user_http_client.cookies["ev_session"] = verify_flow.flow_session.session_key
 
     _, res = await sanic_user_http_client.post(
-        "/v1/auth/email/verify",
-        json={"token": verify_flow.action_token_generated.short_token},
+        "/v1/auth/email/verify-link",
+        json={"token": verify_flow.action_token_generated.long_token},
     )
 
     assert res.status_code == HTTPStatus.OK
@@ -250,14 +287,3 @@ async def test_confirm_email_by_code_with_login(
     assert "session" in cookies
     assert cookies["ev_session"].is_deleted is True
     assert cookies["session"].is_deleted is False
-
-
-async def test_confirm_email_by_code_unauthorized(
-    sanic_user_http_client: AppSanicTestClient,
-) -> None:
-    _, res = await sanic_user_http_client.post(
-        "/v1/auth/email/verify",
-        json={"token": "000000"},
-    )
-    assert res.status == HTTPStatus.UNAUTHORIZED
-    assert res.json == UnauthorizedError().to_dict()

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 async def password_reset(command: UserPasswordResetCommand) -> UserPasswordResetResult:
-    """Set new password.
+    """Установить новый пароль.
 
     Raises:
         PasswordResetSessionNotConfirmedError

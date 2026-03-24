@@ -48,7 +48,7 @@ async def request_password_reset(
     request: AppRequest,
     body: UserPasswordResetRequestInput,
 ) -> HTTPResponse:
-    """Request a password reset email."""
+    """Запросить сброс пароля."""
     config: AppConfig = request.app.ctx.config
 
     command = UserRequestPasswordResetCommand(
@@ -62,6 +62,7 @@ async def request_password_reset(
     response = empty()
 
     if result.created_flow_session is not None:
+        request.ctx.flow_session = result.created_flow_session.storage
         add_cookie(
             response,
             value=result.created_flow_session.session_key,
@@ -86,9 +87,9 @@ async def password_verify(
     session: UserFlowSessionPasswordResetDTO,
     body: UserActionTokenInput,
 ) -> HTTPResponse:
-    """Verify reset password by code.
+    """Подтвердить сброс пароля по коду.
 
-    Requires a reset password session.
+    Требует flow session.
     """
     command = UserConfirmPasswordByCodeCommand(
         flow_session=session,
@@ -111,9 +112,9 @@ async def password_verify_link(
     request: AppRequest,
     body: UserActionTokenInput,
 ) -> HTTPResponse:
-    """Verify reset password by link.
+    """Подтвердить сброс пароля по ссылке.
 
-    Does not require an authenticated session.
+    Не требует flow session.
     """
     config: AppConfig = request.app.ctx.config
 
@@ -152,12 +153,13 @@ async def password_reset(
     session: UserFlowSessionPasswordResetDTO,
     body: UserPasswordResetInput,
 ) -> HTTPResponse:
-    """Set new password.
+    """Установить новый пароль.
 
-    Requires a password reset session.
+    Требует flow session.
 
-    On success the password reset session is invalidated.
-    Depending on application configuration, an authorization session may be created automatically.
+    В случае успеха устанавливает новый пароль и инвалидирует flow session.
+
+    В зависимости от настроек приложения может автоматически авторизовать пользователя.
     """
     config: AppConfig = request.app.ctx.config
 

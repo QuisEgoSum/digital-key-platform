@@ -7,11 +7,13 @@ from _pytest.monkeypatch import MonkeyPatch
 from pydantic import BaseModel
 
 from config.runtime import loader
+from infra.sanic.types import AppSanic
 
 
 @dataclass()
 class AppConfigPatch:
     monkeypatch: MonkeyPatch
+    sanic_apps: list[AppSanic]
 
     def replace_config(
         self,
@@ -22,6 +24,8 @@ class AppConfigPatch:
             updates,
         )
         self.monkeypatch.setattr(loader, "_config", test_config)
+        for sanic_app in self.sanic_apps:
+            self.monkeypatch.setattr(sanic_app.ctx, "config", test_config)
 
     @classmethod
     def _replace_config(
@@ -55,5 +59,8 @@ class AppConfigPatch:
 
 
 @pytest.fixture()
-def app_config_patch(monkeypatch: MonkeyPatch) -> AppConfigPatch:
-    return AppConfigPatch(monkeypatch)
+def app_config_patch(
+    monkeypatch: MonkeyPatch,
+    sanic_user_http_app: AppSanic,
+) -> AppConfigPatch:
+    return AppConfigPatch(monkeypatch, [sanic_user_http_app])

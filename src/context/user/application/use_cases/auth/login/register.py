@@ -22,7 +22,7 @@ from context.user.application.errors.user_email import UserEmailAlreadyExistsErr
 from context.user.application.mapping.audit.confirm_email import (
     map_request_confirm_email_success,
 )
-from context.user.application.mapping.audit.login import map_login_event_from_register
+from context.user.application.mapping.audit.login import map_login_event_from_flow
 from context.user.application.mapping.audit.register import (
     map_register_event_failure,
     map_register_event_success,
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 async def register_user(
     command: UserRegisterCommand,
 ) -> UserRegisterResult:
-    """Регистрация пользователя.
+    """Зарегистрировать пользователя.
 
     Raises:
         UserEmailAlreadyExistsError: Если email существует и отключен режим сокрытия
@@ -173,22 +173,20 @@ async def _finalize_registration(
     ]
 
     if auth_session is not None:
-        audit_events.append(
-            map_login_event_from_register(
-                command=command,
-                user=user,
-                auth_session=auth_session.storage,
-            ),
-        )
-
-    await audit_api.record_events(*audit_events)
-
-    if auth_session is not None:
         user_me = map_register_user_data_to_user_me(
             user,
             user_email,
         )
         status = "logged_in"
+        audit_events.append(
+            map_login_event_from_flow(
+                user_me=user_me,
+                auth_session=auth_session.storage,
+                ip_address=command.ip_address,
+            ),
+        )
+
+    await audit_api.record_events(*audit_events)
 
     return UserRegisterResult(
         user=user_me,

@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
     __abstract__ = True
 
 
-class TestModel(Base):
+class SaTestModel(Base):
     __tablename__ = "test_model"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -37,7 +37,7 @@ def test_json_object_builder_method_type(
     method: Callable[..., Any],
     sql_method: str,
 ) -> None:
-    stmt = method(TestModel)
+    stmt = method(SaTestModel)
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -48,7 +48,7 @@ def test_json_object_builder_method_type(
 
 
 def test_json_object_builder_model() -> None:
-    stmt = json_object_builder(TestModel)
+    stmt = json_object_builder(SaTestModel)
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -59,7 +59,10 @@ def test_json_object_builder_model() -> None:
 
 
 def test_json_object_builder_fields() -> None:
-    stmt = json_object_builder(TestModel.id, TestModel.field_1.label("test_field_1"))
+    stmt = json_object_builder(
+        SaTestModel.id,
+        SaTestModel.field_1.label("test_field_1"),
+    )
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -69,7 +72,7 @@ def test_json_object_builder_fields() -> None:
 
 
 def test_json_object_builder_aliased() -> None:
-    a = aliased(TestModel, name="a")
+    a = aliased(SaTestModel, name="a")
 
     stmt = json_object_builder(a)
 
@@ -81,7 +84,7 @@ def test_json_object_builder_aliased() -> None:
 
 
 def test_json_object_builder_aliased_fields() -> None:
-    a = aliased(TestModel, name="a")
+    a = aliased(SaTestModel, name="a")
 
     stmt = json_object_builder(a.id, a.field_1.label("test_field_1"))
 
@@ -92,9 +95,9 @@ def test_json_object_builder_aliased_fields() -> None:
 
 def test_json_object_builder_subquery_alias() -> None:
     sq = select(
-        TestModel.id,
-        TestModel.field_1.label("test_field_1"),
-        TestModel.field_2,
+        SaTestModel.id,
+        SaTestModel.field_1.label("test_field_1"),
+        SaTestModel.field_2,
     ).alias("sq")
 
     stmt = json_object_builder(sq)
@@ -108,9 +111,9 @@ def test_json_object_builder_subquery_alias() -> None:
 
 def test_json_object_builder_subquery_alias_fields() -> None:
     sq = select(
-        TestModel.id,
-        TestModel.field_1.label("test_field_1"),
-        TestModel.field_2,
+        SaTestModel.id,
+        SaTestModel.field_1.label("test_field_1"),
+        SaTestModel.field_2,
     ).alias("sq")
 
     stmt = json_object_builder(
@@ -127,7 +130,7 @@ def test_json_object_builder_subquery_alias_fields() -> None:
 
 
 def test_json_object_builder_expr_pair() -> None:
-    stmt = json_object_builder(("test_id", TestModel.id), TestModel.field_1)
+    stmt = json_object_builder(("test_id", SaTestModel.id), SaTestModel.field_1)
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -149,7 +152,7 @@ def test_json_build_array_agg_builder_method_type(
     sql_agg_method: str,
     sql_cast_type: str,
 ) -> None:
-    stmt = method(TestModel)
+    stmt = method(SaTestModel)
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -160,7 +163,7 @@ def test_json_build_array_agg_builder_method_type(
 
 
 def test_json_build_array_agg_builder_where() -> None:
-    stmt = json_build_array_agg_builder(TestModel, where=TestModel.id > 10)
+    stmt = json_build_array_agg_builder(SaTestModel, where=SaTestModel.id > 10)
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -171,7 +174,7 @@ def test_json_build_array_agg_builder_where() -> None:
 
 
 def test_json_build_array_agg_builder_where_order_by() -> None:
-    stmt = json_build_array_agg_builder(TestModel, order_by=TestModel.id.desc())
+    stmt = json_build_array_agg_builder(SaTestModel, order_by=SaTestModel.id.desc())
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -183,8 +186,8 @@ def test_json_build_array_agg_builder_where_order_by() -> None:
 
 def test_json_build_array_agg_builder_where_order_by_list() -> None:
     stmt = json_build_array_agg_builder(
-        TestModel,
-        order_by=[TestModel.id.desc(), TestModel.field_1.asc()],
+        SaTestModel,
+        order_by=[SaTestModel.id.desc(), SaTestModel.field_1.asc()],
     )
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
@@ -196,7 +199,7 @@ def test_json_build_array_agg_builder_where_order_by_list() -> None:
 
 
 def test_json_build_array_agg_builder_without_default() -> None:
-    stmt = json_build_array_agg_builder(TestModel, empty_array_on_null=False)
+    stmt = json_build_array_agg_builder(SaTestModel, empty_array_on_null=False)
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
@@ -207,9 +210,9 @@ def test_json_build_array_agg_builder_without_default() -> None:
 
 def test_json_build_array_agg_builder_combined() -> None:
     stmt = json_build_array_agg_builder(
-        TestModel,
-        where=TestModel.id > 10,
-        order_by=[TestModel.id.desc(), TestModel.field_1.asc()],
+        SaTestModel,
+        where=SaTestModel.id > 10,
+        order_by=[SaTestModel.id.desc(), SaTestModel.field_1.asc()],
     )
 
     sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))

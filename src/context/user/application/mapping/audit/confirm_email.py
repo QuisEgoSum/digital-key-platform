@@ -11,6 +11,10 @@ from context.user.application.dtos.entity.user_session import UserSessionStorage
 from context.user.application.errors.user_action_token import (
     InvalidUserActionTokenError,
 )
+from context.user.application.errors.user_email import (
+    UserEmailAlreadyVerifiedError,
+    UserEmailNotFoundError,
+)
 from infra.audit.dtos import AuditEntityRefDTO, AuditEventCommand, AuditEventDetailsDTO
 from infra.audit.enums import (
     AuditActionType,
@@ -21,6 +25,7 @@ from infra.audit.enums import (
     AuditScopeType,
     AuditSubjectType,
 )
+from shared.errors.base import ApplicationError
 
 
 def map_request_confirm_email_success(
@@ -72,8 +77,8 @@ def map_request_confirm_email_suppressed(
         actor_key=None,
         subject_type=None,
         subject_id=None,
-        scope_type=AuditScopeType.USER if flow_session.user_id else None,
-        scope_id=flow_session.user_id,
+        scope_type=None,
+        scope_id=None,
         result=AuditResultType.REJECTED,
         action=AuditActionType.EMAIL_VERIFICATION_REQUEST,
         ip_address=ip_address,
@@ -89,6 +94,62 @@ def map_request_confirm_email_suppressed(
                     extra={"kind": flow_session.kind},
                 ),
             ],
+        ),
+    )
+
+
+def map_request_confirm_email_with_error(
+    error: ApplicationError,
+    *,
+    ip_address: str | None,
+    flow_session: UserFlowSessionEmailVerificationDTO,
+) -> AuditEventCommand:
+    actor_type = AuditActorType.ANONYMOUS
+    subject_type = None
+    subject_id = None
+    scope_type = None
+    user_id: int | None = None
+    entities = [
+        AuditEntityRefDTO(
+            type=AuditEntityType.USER_FLOW_SESSION,
+            id=flow_session.session_id,
+            role=AuditEventEntityRoleType.FLOW,
+            extra={"kind": flow_session.kind},
+        ),
+    ]
+
+    if flow_session.user_id is not None:
+        actor_type = AuditActorType.USER
+        user_id = flow_session.user_id
+        scope_type = AuditScopeType.USER
+
+    if isinstance(error, UserEmailNotFoundError):
+        outcome = "email_not_found"
+    elif isinstance(error, UserEmailAlreadyVerifiedError):
+        outcome = "email_already_verified"
+        user_id = error.user_email.user_id
+        subject_type = AuditSubjectType.USER_EMAIL
+        subject_id = error.user_email.id
+        scope_type = AuditScopeType.USER
+    else:
+        outcome = "unclassified_error"
+
+    return AuditEventCommand(
+        actor_type=actor_type,
+        actor_key=user_id,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        scope_type=scope_type,
+        scope_id=user_id,
+        result=AuditResultType.REJECTED,
+        action=AuditActionType.EMAIL_VERIFICATION_REQUEST,
+        ip_address=ip_address,
+        data=AuditEventDetailsDTO(
+            details={
+                "outcome": outcome,
+                "error_code": error.code,
+            },
+            entities=entities,
         ),
     )
 
@@ -220,7 +281,7 @@ def map_confirm_email_by_link_success(
             AuditEntityRefDTO(
                 type=AuditEntityType.USER_FLOW_SESSION,
                 id=command.flow_session.session_id,
-                # The flow session is related context for the event.
+                # Для флоу по ссылке сессия не обязательна.
                 role=AuditEventEntityRoleType.RELATED,
                 extra={"kind": command.flow_session.kind},
             ),
@@ -279,7 +340,7 @@ def map_confirm_email_by_link_failure(
             AuditEntityRefDTO(
                 type=AuditEntityType.USER_FLOW_SESSION,
                 id=command.flow_session.session_id,
-                # The flow session is related context for the event.
+                # Для флоу по ссылке сессия не обязательна.
                 role=AuditEventEntityRoleType.RELATED,
                 extra={"kind": command.flow_session.kind},
             ),

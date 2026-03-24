@@ -41,7 +41,7 @@ class UserConfirmEmailByCodeCommand(BaseModel, frozen=True):
 
 
 class UserConfirmEmailByLinkCommand(BaseModel, frozen=True):
-    flow_session: UserFlowSessionEmailVerificationDTO
+    flow_session: UserFlowSessionEmailVerificationDTO | None
     token: str
     ip_address: str | None
 

@@ -5,4 +5,5 @@ pytest_plugins = [
     "tests.fixtures.user.user_credentials",
     "tests.fixtures.user.user_email",
     "tests.fixtures.user.user_email_agent",
+    "tests.fixtures.user.user_session",
 ]

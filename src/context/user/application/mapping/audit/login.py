@@ -1,8 +1,10 @@
 from context.user.application.dtos.command.auth import (
     UserLoginCommand,
-    UserRegisterCommand,
 )
-from context.user.application.dtos.entity.user import UserDTO, UserLoginDetailsDTO
+from context.user.application.dtos.entity.user import (
+    UserLoginDetailsDTO,
+    UserMeDTO,
+)
 from context.user.application.dtos.entity.user_flow_session import (
     UserFlowSessionEmailVerificationDTO,
 )
@@ -133,21 +135,21 @@ def map_login_event_identified_failure(
     )
 
 
-def map_login_event_from_register(
-    command: UserRegisterCommand,
-    user: UserDTO,
+def map_login_event_from_flow(
+    user_me: UserMeDTO,
     auth_session: UserSessionStorageDTO,
+    ip_address: str | None,
 ) -> AuditEventCommand:
     return AuditEventCommand(
         actor_type=AuditActorType.USER,
-        actor_key=user.id,
+        actor_key=user_me.id,
         subject_type=AuditSubjectType.USER,
-        subject_id=user.id,
+        subject_id=user_me.id,
         scope_type=AuditScopeType.USER,
-        scope_id=user.id,
+        scope_id=user_me.id,
         result=AuditResultType.SUCCESS,
         action=AuditActionType.LOGIN,
-        ip_address=command.ip_address,
+        ip_address=ip_address,
         data=AuditEventDetailsDTO(
             details={
                 "outcome": "logged_in",

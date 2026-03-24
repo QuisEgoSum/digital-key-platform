@@ -259,7 +259,7 @@ def map_confirm_password_by_link_success(
                 AuditEntityRefDTO(
                     type=AuditEntityType.USER_FLOW_SESSION,
                     id=flow_session.session_id,
-                    # The flow session is related context for the event.
+                    # Для флоу по ссылке сессия не обязательна.
                     role=AuditEventEntityRoleType.RELATED,
                     extra={"kind": flow_session.kind},
                 ),
@@ -288,7 +288,7 @@ def map_confirm_password_by_link_failure(
             AuditEntityRefDTO(
                 type=AuditEntityType.USER_FLOW_SESSION,
                 id=command.flow_session.session_id,
-                # The flow session is related context for the event.
+                # Для флоу по ссылке сессия не обязательна.
                 role=AuditEventEntityRoleType.RELATED,
                 extra={"kind": command.flow_session.kind},
             ),

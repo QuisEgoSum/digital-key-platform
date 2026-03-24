@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 async def login(command: UserLoginCommand) -> UserLoginResult:
-    """User login.
+    """Авторизовать пользователя.
 
     Raises:
         InvalidCredentialsError
